@@ -20,11 +20,8 @@ from .PrivacyClose import *
 from .PrivacyOpen import *
 from .Repeat import *
 from .SaveAudioMessage import *
-from .Stickers import *
-from .TestersCheck import *
 from .Text import *
 from .UnBan import *
 from .UnBanChat import *
 from .UnIgnore import *
 from .UserId import *
-from .Groups import *

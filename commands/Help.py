@@ -21,18 +21,6 @@ commands = {
             "description": "добавить текст к фотографии",
         },
         {
-            "commands_alias": ["/tc", "/tester_check"],
-            "description": "проверить пользователя на тестера",
-        },
-        {
-            "commands_alias": ["/st", "/stickers"],
-            "description": "узнать количество стикеров пользователя и цену",
-        },
-        {
-            "commands_alias": ["/g", "/groups"],
-            "description": "возможные сообщества пользователя",
-        },
-        {
             "commands_alias": ["/userid", "/uid"],
             "description": "получить ID пользователя",
         },
