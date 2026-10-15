@@ -50,18 +50,24 @@ def song(ctx: Context) -> None:
     ctx.send(attachment=voice, reply=not ctx.is_owner)
 
 
+def next_free_number(saved: dict) -> str:
+    number = 1
+    while str(number) in saved:
+        number += 1
+    return str(number)
+
+
 def save(ctx: Context) -> None:
     url = voice_url(ctx.reply_message)
     if url is None:
         ctx.fail(NEED_VOICE)
-    key = ctx.rest(1)
-    if not key:
-        ctx.fail(f"{INVALID} Так: /sa название — ответом на голосовое")
-    if key in ctx.store.get(SAVED, {}):
+    saved = ctx.store.get(SAVED, {})
+    key = ctx.rest(1) or next_free_number(saved)
+    if key in saved:
         ctx.fail(f"{INVALID} Голосовое «{key}» уже есть — выберите другое название")
     if not ctx.store.put_new(SAVED, key, reupload_voice(ctx, url)):
         ctx.fail(f"{INVALID} Голосовое «{key}» уже есть — выберите другое название")
-    ctx.flash(f"{SUCCESS} Голосовое сохранено как «{key}»")
+    ctx.flash(f"{SUCCESS} Голосовое сохранено как «{key}» — отправить: /ag {key}")
 
 
 def send_saved(ctx: Context) -> None:
@@ -96,7 +102,7 @@ COMMANDS = [
     Command(("/au", "/audio"), distort, "жмых голосового (ответом)", icon="🎤", usage="[1-4]"),
     Command(("/ma", "/music_audio"), song, "превратить песню в голосовое", icon="🎶"),
     Command(("/copy",), copy, "скопировать чужое голосовое (ответом)", Access.TRUSTED, "🎙"),
-    Command(("/sa", "/save_audio"), save, "сохранить голосовое (ответом)", Access.TRUSTED, "💾", "[название]"),
+    Command(("/sa", "/save_audio"), save, "сохранить голосовое (ответом), без названия — под номером", Access.TRUSTED, "💾", "[название]"),
     Command(("/ag", "/aget"), send_saved, "отправить сохранённое голосовое", Access.TRUSTED, "💿", "[название]"),
     Command(("/ad", "/adelete"), delete_saved, "удалить сохранённое голосовое", Access.TRUSTED, "🗑", "[название]"),
     Command(("/alist",), list_saved, "список сохранённых голосовых", Access.TRUSTED, "📒"),

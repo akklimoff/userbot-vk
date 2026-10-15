@@ -139,6 +139,15 @@ def test_saved_voice_flow(router, vk, store, monkeypatch, tmp_path):
     assert store.get("saved_audio") == {}
 
 
+
+def test_saved_voice_without_name_gets_next_number(router, store, monkeypatch, tmp_path):
+    from userbot import media
+    monkeypatch.setattr(media, "download", lambda url, d, s: str(tmp_path / "v.ogg"))
+    store.put_new("saved_audio", "1", "audio_message1_1")
+    voice = {"type": "audio_message", "audio_message": {"link_ogg": "https://x/v.ogg"}}
+    router.handle(message("/sa", reply_message={"id": 5, "from_id": STRANGER, "attachments": [voice]}))
+    assert list(store.get("saved_audio")) == ["1", "2"]
+
 def test_caption_needs_text(router, vk):
     photo = {"type": "photo", "photo": {"sizes": [{"url": "https://x/a.jpg", "width": 1, "height": 1}]}}
     router.handle(message("/t", from_id=STRANGER, attachments=[photo]))
