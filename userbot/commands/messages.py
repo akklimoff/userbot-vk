@@ -81,12 +81,12 @@ def invisible(ctx: Context) -> None:
     args = ctx.args
     ttl = parse_ttl(args[1]) if len(args) > 1 else None
     if ttl is not None and ttl not in ALLOWED_TTL:
-        ctx.fail(f"{ERROR} Такого времени нет — можно 15s, 1m, 5m, 15m, 1h, 5h или 1d", seconds=5)
+        ctx.fail(f"{ERROR} Такого времени нет — можно 15s, 1m, 5m, 15m, 1h, 5h или 1d")
     text = ctx.rest(2 if ttl else 1)
     attachments = reattach_ids(ctx.message)
     media = own_media(ctx)
     if not (text or attachments or media):
-        ctx.fail(f"{ERROR} Нужен текст или ответ на своё голосовое или стикер", seconds=1)
+        ctx.fail(f"{ERROR} Нужен текст или ответ на своё голосовое или стикер")
     if ctx.is_command_like(text):
         ctx.fail(COMMAND_LIKE)
     ttl = ttl or DEFAULT_TTL
@@ -101,14 +101,14 @@ def invisible(ctx: Context) -> None:
 def repeat(ctx: Context) -> None:
     args = ctx.args
     if len(args) < 3 or not args[1].isdecimal() or not 1 <= int(args[1]) <= MAX_REPEAT:
-        ctx.fail(f"{INVALID} Так: /repeat 5 текст (от 1 до {MAX_REPEAT} раз)", seconds=1)
+        ctx.fail(f"{INVALID} Так: /repeat 5 текст (от 1 до {MAX_REPEAT} раз)")
     text = ctx.rest(2)
     if ctx.is_command_like(text):
         ctx.fail(COMMAND_LIKE)
     ctx.delete()
     for _ in range(int(args[1])):
         try:
-            if not ctx.send(text, reply=False):
+            if not ctx.post(text):
                 return
         except Exception:
             log.warning("Повтор в %s прерван ошибкой VK", ctx.peer_id)

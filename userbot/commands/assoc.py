@@ -35,7 +35,7 @@ def set_assoc(ctx: Context) -> None:
         ctx.fail(f"{ERROR} {alias} — это уже команда")
     if not ctx.store.put_new(ASSOC, alias, command):
         ctx.fail(f"{ERROR} Ассоциация {alias} уже есть")
-    ctx.flash(f"{SUCCESS} Теперь {alias} — это {command}", seconds=5)
+    ctx.done(f"{SUCCESS} Теперь {alias} — это {command}")
 
 
 def delete_assoc(ctx: Context) -> None:
@@ -44,7 +44,7 @@ def delete_assoc(ctx: Context) -> None:
         ctx.fail(f"{INVALID} Так: /assoc_del айди")
     if not ctx.store.pop(ASSOC, alias):
         ctx.fail(f"{INVALID} Ассоциации {alias} нет")
-    ctx.flash(f"{SUCCESS} Ассоциация {alias} удалена")
+    ctx.done(f"{SUCCESS} Ассоциация {alias} удалена")
 
 
 COMMANDS = [

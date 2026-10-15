@@ -29,12 +29,13 @@ def test_owner_cannot_trust_self(router, store):
     assert store.get("trusted") is None
 
 
-def test_trusted_runs_owner_commands_with_replies(router, store, vk):
+def test_trusted_gets_report_in_dm_and_command_is_removed(router, store, vk):
     trust(router)
     router.handle(message(f"/ban {TARGET}", from_id=TRUSTED, message_id=200))
     assert store.get("banned") == [TARGET]
-    assert vk.sent[-1]["reply_to"] == 200 and "заблокирован" in vk.sent[-1]["text"]
-    assert all(e[1] != 200 for e in vk.edited)
+    assert vk.sent[-1]["peer_id"] == TRUSTED and "заблокирован" in vk.sent[-1]["text"]
+    assert all(m["peer_id"] != CHAT for m in vk.sent)
+    assert vk.deleted[-1] == ([200], True) and vk.edited == []
 
 
 def test_stranger_cannot_run_owner_commands(router, store):
@@ -81,7 +82,7 @@ def test_trusted_help_lists_every_command(router, vk):
 def test_trusted_list(router, vk):
     trust(router)
     router.handle(message("/trusted"))
-    assert "Имя3 Фамилия" in vk.edited[-1][2]
+    assert "Имя3 Фамилия" in vk.sent[-1]["text"] and vk.sent[-1]["peer_id"] == OWNER
 
 
 def test_owner_messages_in_trusted_dialog_are_deleted_for_all(store):

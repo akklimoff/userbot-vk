@@ -1,5 +1,5 @@
-from userbot.context import (ERROR, INVALID, SUCCESS, SUCCESS_NO, TRUSTED_USERS, Access, Command, Context,
-                             mention)
+from userbot.context import (INVALID, SUCCESS, SUCCESS_NO, TRUSTED_USERS, Access, Command, Context,
+                             full_name)
 
 BANNED = "banned"
 BANNED_PEERS = "banned_peers"
@@ -10,7 +10,7 @@ DISABLED = "disabled"
 # иначе доверенный обходил бы правило «доверием управляет только владелец», блокируя других доверенных
 def protect_trusted(ctx: Context, user: dict) -> None:
     if not ctx.is_owner and user["id"] in ctx.store.get(TRUSTED_USERS, []):
-        ctx.fail(f"{INVALID} {mention(user)} — доверенный, тут решает только владелец")
+        ctx.fail(f"{INVALID} {full_name(user)} — доверенный, тут решает только владелец")
 
 
 def ban(ctx: Context) -> None:
@@ -19,27 +19,27 @@ def ban(ctx: Context) -> None:
         ctx.fail(f"{INVALID} Себя заблокировать нельзя")
     protect_trusted(ctx, user)
     if not ctx.store.add_to(BANNED, user["id"]):
-        ctx.fail(f"{INVALID} {mention(user)} уже заблокирован")
-    ctx.answer(f"{SUCCESS} {mention(user)} заблокирован — бот больше не отвечает ему")
+        ctx.fail(f"{INVALID} {full_name(user)} уже заблокирован")
+    ctx.done(f"{SUCCESS} {full_name(user)} заблокирован — бот больше не отвечает ему")
 
 
 def unban(ctx: Context) -> None:
     user = ctx.target("/unban @ник")
     if not ctx.store.remove_from(BANNED, user["id"]):
-        ctx.fail(f"{INVALID} {mention(user)} и так не заблокирован")
-    ctx.answer(f"{SUCCESS} {mention(user)} разблокирован")
+        ctx.fail(f"{INVALID} {full_name(user)} и так не заблокирован")
+    ctx.done(f"{SUCCESS} {full_name(user)} разблокирован")
 
 
 def ban_chat(ctx: Context) -> None:
     if not ctx.store.add_to(BANNED_PEERS, ctx.peer_id):
         ctx.fail(f"{INVALID} Беседа уже заблокирована")
-    ctx.answer(f"{SUCCESS} Беседа заблокирована — здесь бот слушает только владельца и доверенных")
+    ctx.done(f"{SUCCESS} Беседа заблокирована — здесь бот слушает только владельца и доверенных")
 
 
 def unban_chat(ctx: Context) -> None:
     if not ctx.store.remove_from(BANNED_PEERS, ctx.peer_id):
         ctx.fail(f"{INVALID} Беседа и так не заблокирована")
-    ctx.answer(f"{SUCCESS} Беседа разблокирована")
+    ctx.done(f"{SUCCESS} Беседа разблокирована")
 
 
 def ignore(ctx: Context) -> None:
@@ -48,22 +48,22 @@ def ignore(ctx: Context) -> None:
         ctx.fail(f"{INVALID} Себя игнорировать нельзя")
     protect_trusted(ctx, user)
     if not ctx.store.add_to(IGNORED, user["id"]):
-        ctx.fail(f"{INVALID} {mention(user)} уже в игноре")
-    ctx.answer(f"{SUCCESS} {mention(user)} в игноре — его сообщения будут исчезать")
+        ctx.fail(f"{INVALID} {full_name(user)} уже в игноре")
+    ctx.done(f"{SUCCESS} {full_name(user)} в игноре — его сообщения будут исчезать")
 
 
 def unignore(ctx: Context) -> None:
     user = ctx.target("/unignore @ник")
     if not ctx.store.remove_from(IGNORED, user["id"]):
-        ctx.fail(f"{INVALID} {mention(user)} и так не в игноре")
-    ctx.answer(f"{SUCCESS} {mention(user)} больше не в игноре")
+        ctx.fail(f"{INVALID} {full_name(user)} и так не в игноре")
+    ctx.done(f"{SUCCESS} {full_name(user)} больше не в игноре")
 
 
 def disable(ctx: Context) -> None:
     if ctx.store.toggle(DISABLED):
-        ctx.flash(f"{SUCCESS_NO} Команды для всех выключены — бот слушает только своих")
+        ctx.done(f"{SUCCESS_NO} Команды для всех выключены — бот слушает только своих")
     else:
-        ctx.flash(f"{SUCCESS} Команды для всех снова включены")
+        ctx.done(f"{SUCCESS} Команды для всех снова включены")
 
 
 def trust(ctx: Context) -> None:
@@ -71,15 +71,15 @@ def trust(ctx: Context) -> None:
     if user["id"] == ctx.owner_id:
         ctx.fail(f"{INVALID} Владельцу и так можно всё")
     if not ctx.store.add_to(TRUSTED_USERS, user["id"]):
-        ctx.fail(f"{INVALID} {mention(user)} уже доверенный")
-    ctx.answer(f"💍 {mention(user)} теперь доверенный — может пользоваться командами владельца")
+        ctx.fail(f"{INVALID} {full_name(user)} уже доверенный")
+    ctx.done(f"💍 {full_name(user)} теперь доверенный — может пользоваться командами владельца")
 
 
 def untrust(ctx: Context) -> None:
     user = ctx.target("/untrust @ник")
     if not ctx.store.remove_from(TRUSTED_USERS, user["id"]):
-        ctx.fail(f"{INVALID} {mention(user)} и так не доверенный")
-    ctx.answer(f"{SUCCESS_NO} {mention(user)} больше не доверенный")
+        ctx.fail(f"{INVALID} {full_name(user)} и так не доверенный")
+    ctx.done(f"{SUCCESS_NO} {full_name(user)} больше не доверенный")
 
 
 def list_trusted(ctx: Context) -> None:
@@ -87,7 +87,7 @@ def list_trusted(ctx: Context) -> None:
     if not ids:
         ctx.fail(f"{INVALID} Доверенных пока нет")
     users = {u["id"]: u for u in ctx.vk.users(ids)}
-    names = [mention(users[user_id]) if user_id in users else f"id{user_id}" for user_id in ids]
+    names = [full_name(users[user_id]) if user_id in users else f"id{user_id}" for user_id in ids]
     ctx.answer("\n".join(["👯‍♀️ Доверенные", "", *(f"💍 {name}" for name in names)]))
 
 

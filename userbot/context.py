@@ -94,56 +94,60 @@ class Context:
         return looks_like_command(shown) or bool(words) and self.triggers_command(words[0].lower())
 
     # бот пишет от лица владельца, и long poll вернёт ему же его сообщение как команду владельца
-    def post(self, text: str | None = None, **params) -> bool:
+    def post(self, text: str | None = None, peer_id: int | None = None, **params) -> bool:
         if self.is_command_like(text):
-            log.warning("Сообщение в %s похоже на команду бота и не отправлено", self.peer_id)
+            log.warning("Сообщение в %s похоже на команду бота и не отправлено", peer_id or self.peer_id)
             return False
-        self.vk.send(self.peer_id, text, **params)
+        self.vk.send(peer_id or self.peer_id, text, **params)
         return True
 
-    def send(self, text: str | None = None, reply: bool = True, **params) -> bool:
-        return self.post(text, reply_to=self.message["id"] if reply else None, **params)
+    def result(self, **params) -> bool:
+        reply = self.reply_message
+        return self.post(reply_to=reply["id"] if reply else None, **params)
 
-    def edit(self, text: str) -> None:
-        self.vk.edit(self.peer_id, self.message["id"], text)
-
-    # чужое сообщение VK даёт удалить у всех только админу беседы, поэтому для доверенных это лишь попытка
-    def delete(self) -> None:
+    # в чатах после команды ничего не остаётся: отчёт уходит в личку автору, владельцу (from_id == owner_id) — в «Избранное»
+    def report(self, text: str) -> None:
         try:
-            self.vk.delete([self.message["id"]], self.for_all)
-            self.deleted = True
+            self.post(text, peer_id=self.from_id)
         except Exception:
-            if self.is_owner:
-                raise
-            log.info("Не удалось удалить команду доверенного %s в %s", self.from_id, self.peer_id)
+            log.info("Не удалось написать в личку %s", self.from_id)
+
+    def answer(self, text: str) -> None:
+        self.report(text)
+
+    def done(self, text: str) -> None:
+        if not self.is_owner:
+            self.report(text)
+
+    def fail(self, text: str) -> None:
+        self.report(text)
+        raise Abort()
+
+    # чужое сообщение VK даёт удалить у всех только админу беседы — тогда убираем хотя бы у владельца
+    def delete(self) -> None:
+        if self.deleted:
+            return
+        self.deleted = True
+        message_ids = [self.message["id"]]
+        try:
+            self.vk.delete(message_ids, self.for_all)
+            return
+        except Exception:
+            if not self.for_all:
+                log.info("Не удалось удалить команду в %s", self.peer_id)
+                return
+        try:
+            self.vk.delete(message_ids, False)
+        except Exception:
+            log.info("Не удалось удалить команду в %s", self.peer_id)
 
     def hide(self) -> None:
         if self.is_owner:
-            self.edit(BLANK)
+            try:
+                self.vk.edit(self.peer_id, self.message["id"], BLANK)
+            except Exception:
+                log.info("Не удалось стереть команду в %s", self.peer_id)
         self.delete()
-
-    @property
-    def editable(self) -> bool:
-        return self.is_owner and not self.deleted
-
-    def flash(self, text: str, seconds: float = 3) -> None:
-        if not self.editable:
-            self.send(text, reply=not self.deleted)
-            return
-        self.edit(text)
-        self.sleep(seconds)
-        self.delete()
-
-    # VK даёт редактировать только сообщения владельца, остальным — ответом
-    def answer(self, text: str) -> None:
-        if self.editable:
-            self.edit(text)
-        else:
-            self.send(text, reply=not self.deleted)
-
-    def fail(self, text: str, seconds: float = 3) -> None:
-        self.flash(text, seconds)
-        raise Abort()
 
     def target(self, usage: str, fields: str | None = None) -> dict:
         args = self.args
@@ -180,5 +184,6 @@ def as_shown(text: str | None) -> str:
     return "".join(ch for ch in shown if unicodedata.category(ch) != "Cf")
 
 
-def mention(user: dict) -> str:
-    return f"[id{user['id']}|{user['first_name']} {user['last_name']}]"
+# без разметки [id…|…]: отчёты уходят в личку, а тег владельца в его же «Избранном» будит других ботов аккаунта
+def full_name(user: dict) -> str:
+    return f"{user['first_name']} {user['last_name']}"

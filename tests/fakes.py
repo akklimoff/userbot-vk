@@ -70,3 +70,7 @@ def message(text, from_id=OWNER, peer_id=CHAT, message_id=100, **extra):
 
 def texts(vk):
     return [m["text"] for m in vk.sent] + [e[2] for e in vk.edited]
+
+
+def in_peer(vk, peer_id):
+    return [m for m in vk.sent if m["peer_id"] == peer_id]

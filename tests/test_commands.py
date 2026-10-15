@@ -1,6 +1,6 @@
 import pytest
 
-from tests.fakes import CHAT, OWNER, STRANGER, FakeVk, message, texts, user
+from tests.fakes import CHAT, OWNER, STRANGER, FakeVk, in_peer, message, texts, user
 from userbot.commands import COMMANDS
 from userbot.commands.images import dist_percent
 from userbot.commands.info import help_text
@@ -76,8 +76,8 @@ def test_invisible_sends_text_with_ttl(router, vk):
 
 def test_invisible_rejects_unsupported_ttl(router, vk):
     router.handle(message("/i 2h текст"))
-    assert vk.sent == []
-    assert "Такого времени нет" in vk.edited[0][2]
+    assert in_peer(vk, CHAT) == []
+    assert "Такого времени нет" in in_peer(vk, OWNER)[0]["text"]
 
 
 def test_invisible_resends_own_voice(router, vk):
@@ -94,12 +94,12 @@ def test_repeat_sends_text_n_times(router, vk):
 
 def test_repeat_never_sends_command_like_text(router, vk):
     router.handle(message("/repeat 3 /ban 5"))
-    assert vk.sent == []
+    assert in_peer(vk, CHAT) == []
 
 
 def test_repeat_validates_count(router, vk):
     router.handle(message("/repeat 50 ура"))
-    assert vk.sent == []
+    assert in_peer(vk, CHAT) == []
 
 
 def test_del_removes_only_own_recent_messages(vk, store):
@@ -176,21 +176,21 @@ def test_invisible_skips_link_attachments(router, vk):
 
 def test_invisible_keeps_message_when_text_is_command_like(router, vk):
     router.handle(message("/i 5m +s"))
-    assert vk.sent == []
-    assert "принял бы за команду" in vk.edited[0][2]
+    assert in_peer(vk, CHAT) == []
+    assert "принял бы за команду" in in_peer(vk, OWNER)[0]["text"]
 
 
 def test_own_aliases_are_never_posted(router, vk, store):
     store.put_new("assoc", "ау", "/uid")
     router.handle(message("/repeat 2 ау как дела"))
-    assert vk.sent == []
+    assert in_peer(vk, CHAT) == []
 
 
 def test_privacy_keeps_complex_settings(router, vk):
     vk.privacy_values["photos_saved"] = {"category": "friends", "owners": {"excluded": [7]}}
     router.handle(message("+s", reply_message={"id": 5, "from_id": STRANGER}))
     assert "photos_saved" not in vk.privacy
-    assert "настроен сложнее" in vk.edited[0][2]
+    assert "настроен сложнее" in in_peer(vk, OWNER)[0]["text"]
 
 
 def test_busy_media_slots_are_reported(router, vk, monkeypatch):

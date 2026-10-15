@@ -9,7 +9,7 @@ def test_owner_command_is_ignored_for_others(router, vk):
 def test_public_command_answers_anyone(router, vk):
     router.handle(message("/uid 2", from_id=STRANGER))
     assert vk.sent[0]["text"].endswith("ID пользователя: 2")
-    assert vk.sent[0]["reply_to"] == 100
+    assert vk.sent[0]["peer_id"] == STRANGER and "reply_to" not in vk.sent[0]
 
 
 def test_unknown_word_is_ignored(router, vk):

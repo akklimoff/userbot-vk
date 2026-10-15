@@ -28,7 +28,7 @@ def transform(ctx: Context, source: tuple[str, str], change: Callable[[str, str]
             attachment = ctx.vk.upload_graffiti(result, ctx.peer_id)
         else:
             attachment = ctx.vk.upload_photo(result, ctx.peer_id)
-    ctx.send(attachment=attachment)
+    ctx.result(attachment=attachment)
 
 
 def dist(ctx: Context) -> None:

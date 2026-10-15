@@ -21,7 +21,7 @@ def copy(ctx: Context) -> None:
     if url is None:
         ctx.fail(NEED_VOICE)
     ctx.delete()
-    ctx.send(attachment=reupload_voice(ctx, url), reply=False)
+    ctx.post(attachment=reupload_voice(ctx, url))
 
 
 def distort(ctx: Context) -> None:
@@ -35,7 +35,7 @@ def distort(ctx: Context) -> None:
         result = os.path.join(tmp, "result.ogg")
         media.apply_voice_effect(media.download(url, tmp, ".ogg"), result, args[1])
         voice = ctx.vk.upload_voice(result, ctx.peer_id)
-    ctx.send(attachment=voice)
+    ctx.result(attachment=voice)
 
 
 def song(ctx: Context) -> None:
@@ -47,7 +47,7 @@ def song(ctx: Context) -> None:
         result = os.path.join(tmp, "result.wav")
         media.song_to_voice(media.download(audio["url"], tmp, ".mp3"), result)
         voice = ctx.vk.upload_voice(result, ctx.peer_id)
-    ctx.send(attachment=voice, reply=not ctx.is_owner)
+    ctx.result(attachment=voice)
 
 
 def next_free_number(saved: dict) -> str:
@@ -67,7 +67,7 @@ def save(ctx: Context) -> None:
         ctx.fail(f"{INVALID} Голосовое «{key}» уже есть — выберите другое название")
     if not ctx.store.put_new(SAVED, key, reupload_voice(ctx, url)):
         ctx.fail(f"{INVALID} Голосовое «{key}» уже есть — выберите другое название")
-    ctx.flash(f"{SUCCESS} Голосовое сохранено как «{key}» — отправить: /ag {key}")
+    ctx.done(f"{SUCCESS} Голосовое сохранено как «{key}» — отправить: /ag {key}")
 
 
 def send_saved(ctx: Context) -> None:
@@ -78,8 +78,7 @@ def send_saved(ctx: Context) -> None:
     if voice is None:
         ctx.fail(f"{INVALID} Голосового «{key}» нет — список в /alist")
     ctx.hide()
-    reply = ctx.reply_message
-    ctx.post(attachment=voice, reply_to=reply["id"] if reply else None)
+    ctx.result(attachment=voice)
 
 
 def delete_saved(ctx: Context) -> None:
@@ -88,7 +87,7 @@ def delete_saved(ctx: Context) -> None:
         ctx.fail(f"{INVALID} Так: /ad название")
     if not ctx.store.pop(SAVED, key):
         ctx.fail(f"{INVALID} Голосового «{key}» нет — список в /alist")
-    ctx.flash(f"{SUCCESS} Голосовое «{key}» удалено")
+    ctx.done(f"{SUCCESS} Голосовое «{key}» удалено")
 
 
 def list_saved(ctx: Context) -> None:

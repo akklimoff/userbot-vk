@@ -29,7 +29,7 @@ def help_text(commands: list[Command], access: Access) -> str:
 
 
 def show_help(ctx: Context) -> None:
-    ctx.send(help_text(list(ctx.commands), ctx.access))
+    ctx.answer(help_text(list(ctx.commands), ctx.access))
 
 
 COMMANDS = [
