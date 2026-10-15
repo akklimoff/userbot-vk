@@ -4,12 +4,28 @@ def attachment_id(kind: str, obj: dict) -> str:
     return f"{kind}{owner}_{obj['id']}{key}"
 
 
+CIRCLE = "video_message"
 REATTACHABLE = frozenset({"photo", "video", "audio", "doc", "audio_message", "wall", "market", "poll"})
 
 
+# кружочек приходит вложением video с type=video_message, а отправить его VK даёт только как video_message…:
+# с префиксом video вложение молча отбрасывается
+def reattach_id(attachment: dict) -> str:
+    obj = attachment[attachment["type"]]
+    return attachment_id(CIRCLE if is_circle(obj) else attachment["type"], obj)
+
+
 def reattach_ids(message: dict) -> str:
-    return ",".join(attachment_id(a["type"], a[a["type"]]) for a in message.get("attachments") or []
+    return ",".join(reattach_id(a) for a in message.get("attachments") or []
                     if a["type"] in REATTACHABLE and a[a["type"]].get("id") is not None)
+
+
+def is_circle(obj: dict) -> bool:
+    return obj.get("type") == CIRCLE
+
+
+def is_circle_id(attachment: str) -> bool:
+    return attachment.startswith(CIRCLE)
 
 
 def first_attachment(message: dict) -> dict | None:
@@ -41,6 +57,12 @@ def image_source(message: dict) -> tuple[str, str] | None:
     if attachment.get("sticker") and message.get("reply_message"):
         return sticker_url(attachment["sticker"]), "sticker"
     return None
+
+
+def circle_id(message: dict | None) -> str | None:
+    attachment = first_attachment(message or {})
+    video = attachment.get("video") if attachment else None
+    return reattach_id(attachment) if video and is_circle(video) else None
 
 
 def voice_url(message: dict | None) -> str | None:
