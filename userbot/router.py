@@ -4,7 +4,7 @@ from collections.abc import Callable, Sequence
 
 from userbot.commands.access import BANNED, BANNED_PEERS, DISABLED, IGNORED
 from userbot.commands.assoc import ASSOC
-from userbot.context import ERROR, PROCESS, Abort, Command, Context
+from userbot.context import ERROR, PROCESS, TRUSTED_USERS, Abort, Command, Context
 from userbot.media import MediaBusy, MediaError
 from userbot.store import Store
 
@@ -25,10 +25,12 @@ class Router:
         if not self._accepts(message):
             return
         command = self.command_for(message["text"].split()[0].lower())
-        if command is None or (command.owner_only and message["from_id"] != self._owner_id):
+        if command is None:
             return
         ctx = Context(self._vk, self._store, self._owner_id, message, self._commands, self._sleep,
                       lambda word: self.command_for(word) is not None)
+        if ctx.access < command.access:
+            return
         try:
             command.run(ctx)
         except Abort:
@@ -59,14 +61,15 @@ class Router:
         return self._by_name.get(self._store.get(ASSOC, {}).get(word, word))
 
     def _accepts(self, message: dict) -> bool:
-        author, owner = message["from_id"], message["from_id"] == self._owner_id
+        author = message["from_id"]
+        privileged = author == self._owner_id or author in self._store.get(TRUSTED_USERS, [])
         if author in self._store.get(IGNORED, []):
             self._vk.delete([message["id"]], False)
             return False
         if author in self._store.get(BANNED, []):
             return False
-        if not owner and message["peer_id"] in self._store.get(BANNED_PEERS, []):
+        if not privileged and message["peer_id"] in self._store.get(BANNED_PEERS, []):
             return False
-        if not owner and self._store.get(DISABLED, False):
+        if not privileged and self._store.get(DISABLED, False):
             return False
         return bool((message.get("text") or "").strip())

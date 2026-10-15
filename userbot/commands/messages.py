@@ -4,7 +4,7 @@ import re
 import time
 
 from userbot.attachments import attachment_id, first_attachment, reattach_ids
-from userbot.context import BLANK, ERROR, INVALID, Command, Context
+from userbot.context import BLANK, ERROR, INVALID, Access, Command, Context
 
 log = logging.getLogger("userbot-vk")
 
@@ -78,8 +78,7 @@ def invisible(ctx: Context) -> None:
     if ctx.is_command_like(text):
         ctx.fail(COMMAND_LIKE)
     ttl = ttl or DEFAULT_TTL
-    ctx.edit(BLANK)
-    ctx.delete()
+    ctx.hide()
     if not text and media:
         resend_own_media(ctx, media, ttl)
         return
@@ -107,9 +106,9 @@ def repeat(ctx: Context) -> None:
 
 
 COMMANDS = [
-    Command(("/del",), delete_messages, "удалить свои сообщения: /del [количество] [любое слово — сначала стереть]",
-            owner_only=True),
+    Command(("/del",), delete_messages, "удалить сообщения владельца: /del [количество] [любое слово — сначала стереть]",
+            access=Access.TRUSTED),
     Command(("/i", "/и"), invisible, "отправить исчезающее сообщение: /i [15s|1m|5m|15m|1h|5h|1d] [текст]",
-            owner_only=True),
-    Command(("/repeat",), repeat, "повторить сообщение: /repeat [количество] [текст]", owner_only=True),
+            access=Access.TRUSTED),
+    Command(("/repeat",), repeat, "повторить сообщение: /repeat [количество] [текст]", access=Access.TRUSTED),
 ]

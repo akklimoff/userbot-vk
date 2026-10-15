@@ -3,6 +3,7 @@ import re
 import time
 from collections.abc import Callable, Sequence
 from dataclasses import dataclass, field
+from enum import IntEnum
 
 from userbot.safety import looks_like_command
 from userbot.store import Store
@@ -16,6 +17,13 @@ SUCCESS = "✅ |"
 SUCCESS_NO = "❎ |"
 # пустой символ: VK не даёт отредактировать сообщение в пустую строку
 BLANK = "&#13;"
+TRUSTED_USERS = "trusted"
+
+
+class Access(IntEnum):
+    PUBLIC = 0
+    TRUSTED = 1
+    OWNER = 2
 
 
 class Abort(Exception):
@@ -27,7 +35,7 @@ class Command:
     names: tuple[str, ...]
     run: Callable[["Context"], None]
     description: str
-    owner_only: bool = False
+    access: Access = Access.PUBLIC
 
 
 @dataclass
@@ -57,12 +65,19 @@ class Context:
         return self.from_id == self.owner_id
 
     @property
+    def access(self) -> Access:
+        if self.is_owner:
+            return Access.OWNER
+        return Access.TRUSTED if self.from_id in self.store.get(TRUSTED_USERS, []) else Access.PUBLIC
+
+    @property
     def reply_message(self) -> dict | None:
         return self.message.get("reply_message")
 
+    # сообщения в «Избранном» у всех удалять не нужно и нельзя
     @property
     def for_all(self) -> bool:
-        return self.peer_id != self.from_id
+        return self.peer_id != self.owner_id
 
     def rest(self, skip: int) -> str:
         parts = self.message["text"].split(None, skip)
@@ -86,26 +101,37 @@ class Context:
     def edit(self, text: str) -> None:
         self.vk.edit(self.peer_id, self.message["id"], text)
 
+    # чужое сообщение VK даёт удалить у всех только админу беседы, поэтому для доверенных это лишь попытка
     def delete(self) -> None:
-        self.vk.delete([self.message["id"]], self.for_all)
+        try:
+            self.vk.delete([self.message["id"]], self.for_all)
+        except Exception:
+            if self.is_owner:
+                raise
+            log.info("Не удалось удалить команду доверенного %s в %s", self.from_id, self.peer_id)
+
+    def hide(self) -> None:
+        if self.is_owner:
+            self.edit(BLANK)
+        self.delete()
 
     def flash(self, text: str, seconds: float = 3) -> None:
+        if not self.is_owner:
+            self.send(text)
+            return
         self.edit(text)
         self.sleep(seconds)
         self.delete()
 
+    # VK даёт редактировать только сообщения владельца, остальным — ответом
     def answer(self, text: str) -> None:
-        """Владельцу — правкой его же сообщения, остальным — ответом."""
         if self.is_owner:
             self.edit(text)
         else:
             self.send(text)
 
     def fail(self, text: str, seconds: float = 3) -> None:
-        if self.is_owner:
-            self.flash(text, seconds)
-        else:
-            self.send(text)
+        self.flash(text, seconds)
         raise Abort()
 
     def target(self, usage: str, fields: str | None = None) -> dict:

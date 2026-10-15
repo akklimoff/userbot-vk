@@ -3,7 +3,7 @@ import tempfile
 
 from userbot import media
 from userbot.attachments import source_attachment, voice_url
-from userbot.context import BLANK, ERROR, INVALID, SUCCESS, Command, Context
+from userbot.context import ERROR, INVALID, SUCCESS, Access, Command, Context
 
 SAVED = "saved_audio"
 NEED_VOICE = f"{ERROR} Необходимо ответить на голосовое сообщение."
@@ -71,8 +71,7 @@ def send_saved(ctx: Context) -> None:
     voice = ctx.store.get(SAVED, {}).get(key)
     if voice is None:
         ctx.fail(f"{INVALID} Голосового сообщения с таким ключом нет!")
-    ctx.edit(BLANK)
-    ctx.delete()
+    ctx.hide()
     reply = ctx.reply_message
     ctx.post(attachment=voice, reply_to=reply["id"] if reply else None)
 
@@ -90,15 +89,15 @@ def list_saved(ctx: Context) -> None:
     saved = ctx.store.get(SAVED, {})
     if not saved:
         ctx.fail(f"{INVALID} У Вас нет сохранённых голосовых сообщений.")
-    ctx.edit(f"📖 Сохранённые голосовые сообщения: {', '.join(saved)}")
+    ctx.answer(f"📖 Сохранённые голосовые сообщения: {', '.join(saved)}")
 
 
 COMMANDS = [
     Command(("/au", "/audio"), distort, "жмых голосового сообщения"),
     Command(("/ma", "/music_audio"), song, "перевести песню в голосовое сообщение"),
-    Command(("/copy",), copy, "скопировать голосовое сообщение", owner_only=True),
-    Command(("/sa", "/save_audio"), save, "сохранить голосовое сообщение", owner_only=True),
-    Command(("/ag", "/aget"), send_saved, "отправить сохранённое голосовое сообщение", owner_only=True),
-    Command(("/ad", "/adelete"), delete_saved, "удалить сохранённое голосовое сообщение", owner_only=True),
-    Command(("/alist",), list_saved, "список сохранённых голосовых сообщений", owner_only=True),
+    Command(("/copy",), copy, "скопировать голосовое сообщение", access=Access.TRUSTED),
+    Command(("/sa", "/save_audio"), save, "сохранить голосовое сообщение", access=Access.TRUSTED),
+    Command(("/ag", "/aget"), send_saved, "отправить сохранённое голосовое сообщение", access=Access.TRUSTED),
+    Command(("/ad", "/adelete"), delete_saved, "удалить сохранённое голосовое сообщение", access=Access.TRUSTED),
+    Command(("/alist",), list_saved, "список сохранённых голосовых сообщений", access=Access.TRUSTED),
 ]

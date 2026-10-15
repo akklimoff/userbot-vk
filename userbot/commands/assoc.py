@@ -1,4 +1,4 @@
-from userbot.context import ERROR, INVALID, SUCCESS, Command, Context
+from userbot.context import ERROR, INVALID, SUCCESS, Access, Command, Context
 
 ASSOC = "assoc"
 
@@ -11,7 +11,7 @@ def list_assoc(ctx: Context) -> None:
     for alias, command in assocs.items():
         by_command.setdefault(command, []).append(alias)
     lines = [f"{command}: {', '.join(aliases)}" for command, aliases in by_command.items()]
-    ctx.edit("📖 Ассоциации:<br>" + ";<br>".join(lines))
+    ctx.answer("📖 Ассоциации:<br>" + ";<br>".join(lines))
 
 
 def set_assoc(ctx: Context) -> None:
@@ -40,7 +40,7 @@ def delete_assoc(ctx: Context) -> None:
 
 
 COMMANDS = [
-    Command(("/assoc",), list_assoc, "список ассоциаций", owner_only=True),
-    Command(("/assoc_set",), set_assoc, "добавить ассоциацию", owner_only=True),
-    Command(("/assoc_del",), delete_assoc, "удалить ассоциацию", owner_only=True),
+    Command(("/assoc",), list_assoc, "список ассоциаций", access=Access.TRUSTED),
+    Command(("/assoc_set",), set_assoc, "добавить ассоциацию", access=Access.TRUSTED),
+    Command(("/assoc_del",), delete_assoc, "удалить ассоциацию", access=Access.TRUSTED),
 ]

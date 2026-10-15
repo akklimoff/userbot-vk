@@ -5,6 +5,7 @@ from userbot.commands import COMMANDS
 from userbot.commands.images import dist_percent
 from userbot.commands.info import help_text
 from userbot.commands.messages import parse_ttl
+from userbot.context import Access
 from userbot.context import user_ref
 from userbot.router import Router
 
@@ -46,10 +47,12 @@ def test_assoc_set_requires_existing_command(router, vk, store):
     assert store.get("assoc") == {}
 
 
-def test_help_hides_owner_commands_from_others():
-    public = help_text(COMMANDS, for_owner=False)
-    full = help_text(COMMANDS, for_owner=True)
-    assert "/ban" not in public and "/ban" in full
+def test_help_depends_on_access():
+    public = help_text(COMMANDS, Access.PUBLIC)
+    trusted = help_text(COMMANDS, Access.TRUSTED)
+    full = help_text(COMMANDS, Access.OWNER)
+    assert "/ban" not in public and "/ban" in trusted
+    assert "/trust" not in trusted and "/trust" in full
     assert not any(name in full for name in ("/tc", "/st,", "/groups"))
 
 

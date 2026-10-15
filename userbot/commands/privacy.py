@@ -1,6 +1,6 @@
 from functools import partial
 
-from userbot.context import ERROR, INVALID, SUCCESS, SUCCESS_NO, Command, Context, mention
+from userbot.context import ERROR, INVALID, SUCCESS, SUCCESS_NO, Access, Command, Context, mention
 
 AUDIOS = ("audios", "аудиозаписям")
 SAVED_PHOTOS = ("photos_saved", "сохрам")
@@ -30,19 +30,19 @@ def change_access(ctx: Context, section: tuple[str, str], opening: bool) -> None
         ctx.fail(f"{INVALID} У пользователя {mention(user)} нет доступа к {label}!")
     if opening:
         ctx.vk.set_privacy_allowed(key, [*allowed, user["id"]])
-        ctx.edit(f"{SUCCESS} Пользователю {mention(user)} открыт доступ к {label}!")
+        ctx.answer(f"{SUCCESS} Пользователю {mention(user)} открыт доступ к {label}!")
     else:
         ctx.vk.set_privacy_allowed(key, [i for i in allowed if i != user["id"]])
-        ctx.edit(f"{SUCCESS_NO} Пользователю {mention(user)} закрыт доступ к {label}!")
+        ctx.answer(f"{SUCCESS_NO} Пользователю {mention(user)} закрыт доступ к {label}!")
 
 
 COMMANDS = [
     Command(("+s", "+saves", "+с", "+сохры"), partial(change_access, section=SAVED_PHOTOS, opening=True),
-            "открыть сохры пользователю (ответом)", owner_only=True),
+            "открыть сохры пользователю (ответом)", access=Access.TRUSTED),
     Command(("-s", "-saves", "-с", "-сохры"), partial(change_access, section=SAVED_PHOTOS, opening=False),
-            "закрыть сохры пользователю (ответом)", owner_only=True),
+            "закрыть сохры пользователю (ответом)", access=Access.TRUSTED),
     Command(("+a", "+audios", "+м", "+музыка"), partial(change_access, section=AUDIOS, opening=True),
-            "открыть аудиозаписи пользователю (ответом)", owner_only=True),
+            "открыть аудиозаписи пользователю (ответом)", access=Access.TRUSTED),
     Command(("-a", "-audios", "-м", "-музыка"), partial(change_access, section=AUDIOS, opening=False),
-            "закрыть аудиозаписи пользователю (ответом)", owner_only=True),
+            "закрыть аудиозаписи пользователю (ответом)", access=Access.TRUSTED),
 ]

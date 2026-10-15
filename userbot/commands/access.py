@@ -1,4 +1,5 @@
-from userbot.context import ERROR, INVALID, SUCCESS, SUCCESS_NO, Command, Context, mention
+from userbot.context import (ERROR, INVALID, SUCCESS, SUCCESS_NO, TRUSTED_USERS, Access, Command, Context,
+                             mention)
 
 BANNED = "banned"
 BANNED_PEERS = "banned_peers"
@@ -12,26 +13,26 @@ def ban(ctx: Context) -> None:
         ctx.fail(f"{INVALID} Нельзя заблокировать самого себя!")
     if not ctx.store.add_to(BANNED, user["id"]):
         ctx.fail(f"{INVALID} {mention(user)} уже заблокирован.")
-    ctx.edit(f"{SUCCESS} {mention(user)} был заблокирован!")
+    ctx.answer(f"{SUCCESS} {mention(user)} был заблокирован!")
 
 
 def unban(ctx: Context) -> None:
     user = ctx.target("/unban [пользователь]")
     if not ctx.store.remove_from(BANNED, user["id"]):
         ctx.fail(f"{INVALID} {mention(user)} не заблокирован.")
-    ctx.edit(f"{SUCCESS} {mention(user)} был разблокирован!")
+    ctx.answer(f"{SUCCESS} {mention(user)} был разблокирован!")
 
 
 def ban_chat(ctx: Context) -> None:
     if not ctx.store.add_to(BANNED_PEERS, ctx.peer_id):
         ctx.fail(f"{INVALID} Данная беседа уже заблокирована.")
-    ctx.edit(f"{SUCCESS} Данная беседа была заблокирована!")
+    ctx.answer(f"{SUCCESS} Данная беседа была заблокирована!")
 
 
 def unban_chat(ctx: Context) -> None:
     if not ctx.store.remove_from(BANNED_PEERS, ctx.peer_id):
         ctx.fail(f"{INVALID} Данная беседа не заблокирована.")
-    ctx.edit(f"{SUCCESS} Данная беседа была разблокирована!")
+    ctx.answer(f"{SUCCESS} Данная беседа была разблокирована!")
 
 
 def ignore(ctx: Context) -> None:
@@ -40,14 +41,14 @@ def ignore(ctx: Context) -> None:
         ctx.fail(f"{ERROR} Нельзя игнорировать самого себя!")
     if not ctx.store.add_to(IGNORED, user["id"]):
         ctx.fail(f"{INVALID} {mention(user)} уже игнорируется.")
-    ctx.edit(f"{SUCCESS} {mention(user)} теперь будет игнорироваться!")
+    ctx.answer(f"{SUCCESS} {mention(user)} теперь будет игнорироваться!")
 
 
 def unignore(ctx: Context) -> None:
     user = ctx.target("/unignore [пользователь]")
     if not ctx.store.remove_from(IGNORED, user["id"]):
         ctx.fail(f"{INVALID} {mention(user)} не игнорируется.")
-    ctx.edit(f"{SUCCESS} {mention(user)} был удалён из списка игнорируемых!")
+    ctx.answer(f"{SUCCESS} {mention(user)} был удалён из списка игнорируемых!")
 
 
 def disable(ctx: Context) -> None:
@@ -57,14 +58,43 @@ def disable(ctx: Context) -> None:
         ctx.flash(f"{SUCCESS} Общедоступные функции были успешно включены!")
 
 
+def trust(ctx: Context) -> None:
+    user = ctx.target("/trust [пользователь]")
+    if user["id"] == ctx.owner_id:
+        ctx.fail(f"{INVALID} Владельцу и так доступны все команды.")
+    if not ctx.store.add_to(TRUSTED_USERS, user["id"]):
+        ctx.fail(f"{INVALID} {mention(user)} уже доверенный.")
+    ctx.answer(f"{SUCCESS} {mention(user)} теперь доверенный: может пользоваться командами владельца.")
+
+
+def untrust(ctx: Context) -> None:
+    user = ctx.target("/untrust [пользователь]")
+    if not ctx.store.remove_from(TRUSTED_USERS, user["id"]):
+        ctx.fail(f"{INVALID} {mention(user)} не доверенный.")
+    ctx.answer(f"{SUCCESS_NO} {mention(user)} больше не доверенный.")
+
+
+def list_trusted(ctx: Context) -> None:
+    ids = ctx.store.get(TRUSTED_USERS, [])
+    if not ids:
+        ctx.fail(f"{INVALID} Доверенных нет.")
+    users = [ctx.vk.user(user_id) for user_id in ids]
+    names = [mention(u) if u else f"id{user_id}" for user_id, u in zip(ids, users)]
+    ctx.answer("🤝 Доверенные: " + ", ".join(names))
+
+
 COMMANDS = [
-    Command(("/ban",), ban, "заблокировать доступ к боту пользователю", owner_only=True),
-    Command(("/ban_chat",), ban_chat, "заблокировать чат (бот не будет в нем работать)", owner_only=True),
-    Command(("/unban",), unban, "разблокировать пользователя", owner_only=True),
-    Command(("/unban_chat",), unban_chat, "разблокировать чат", owner_only=True),
+    Command(("/ban",), ban, "заблокировать доступ к боту пользователю", access=Access.TRUSTED),
+    Command(("/ban_chat",), ban_chat, "заблокировать чат (бот не будет в нем работать)", access=Access.TRUSTED),
+    Command(("/unban",), unban, "разблокировать пользователя", access=Access.TRUSTED),
+    Command(("/unban_chat",), unban_chat, "разблокировать чат", access=Access.TRUSTED),
     Command(("/ignore",), ignore, "добавить пользователя в игнор (его сообщения будут удаляться для вас)",
-            owner_only=True),
-    Command(("/unignore",), unignore, "удалить пользователя из игнора", owner_only=True),
+            access=Access.TRUSTED),
+    Command(("/unignore",), unignore, "удалить пользователя из игнора", access=Access.TRUSTED),
     Command(("/disable",), disable, "отключить или включить бота для общедоступного использования",
-            owner_only=True),
+            access=Access.TRUSTED),
+    Command(("/trust",), trust, "сделать пользователя доверенным: ему доступны команды владельца",
+            access=Access.OWNER),
+    Command(("/untrust",), untrust, "убрать пользователя из доверенных", access=Access.OWNER),
+    Command(("/trusted",), list_trusted, "список доверенных", access=Access.OWNER),
 ]

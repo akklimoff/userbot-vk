@@ -1,0 +1,93 @@
+import pytest
+
+from tests.fakes import CHAT, OWNER, STRANGER, FakeVk, message, user
+from userbot.commands import COMMANDS
+from userbot.router import Router
+
+TRUSTED = 3
+TARGET = 5
+
+
+@pytest.fixture
+def vk():
+    return FakeVk(users={TRUSTED: user(TRUSTED), TARGET: user(TARGET)})
+
+
+def trust(router):
+    router.handle(message(f"/trust {TRUSTED}"))
+
+
+def test_owner_grants_and_revokes_trust(router, store, vk):
+    trust(router)
+    assert store.get("trusted") == [TRUSTED]
+    router.handle(message(f"/untrust {TRUSTED}"))
+    assert store.get("trusted") == []
+
+
+def test_owner_cannot_trust_self(router, store):
+    router.handle(message(f"/trust {OWNER}"))
+    assert store.get("trusted") is None
+
+
+def test_trusted_runs_owner_commands_with_replies(router, store, vk):
+    trust(router)
+    router.handle(message(f"/ban {TARGET}", from_id=TRUSTED, message_id=200))
+    assert store.get("banned") == [TARGET]
+    assert vk.sent[-1]["reply_to"] == 200 and "заблокирован" in vk.sent[-1]["text"]
+    assert all(e[1] != 200 for e in vk.edited)
+
+
+def test_stranger_cannot_run_owner_commands(router, store):
+    router.handle(message(f"/ban {TARGET}", from_id=STRANGER))
+    assert store.get("banned") is None
+
+
+def test_trusted_cannot_manage_trust(router, store):
+    trust(router)
+    router.handle(message(f"/trust {STRANGER}", from_id=TRUSTED))
+    router.handle(message(f"/untrust {TRUSTED}", from_id=TRUSTED))
+    assert store.get("trusted") == [TRUSTED]
+
+
+def test_trusted_bypasses_disable_and_banned_chat(router, store, vk):
+    trust(router)
+    store.toggle("disabled")
+    store.add_to("banned_peers", CHAT)
+    router.handle(message("/uid 5", from_id=TRUSTED))
+    router.handle(message("/uid 5", from_id=STRANGER))
+    assert len(vk.sent) == 1
+
+
+def test_trusted_command_survives_failed_deletion(router, vk):
+    trust(router)
+
+    def delete(message_ids, for_all):
+        if message_ids == [200]:
+            raise RuntimeError("нельзя удалить чужое сообщение")
+        vk.deleted.append((message_ids, for_all))
+
+    vk.delete = delete
+    router.handle(message("/repeat 2 привет", from_id=TRUSTED, message_id=200))
+    assert [m["text"] for m in vk.sent if m["text"] == "привет"] == ["привет", "привет"]
+
+
+def test_trusted_help_shows_shared_section(router, vk):
+    trust(router)
+    router.handle(message("/help", from_id=TRUSTED))
+    text = vk.sent[-1]["text"]
+    assert "/ban" in text and "/trust" not in text
+
+
+def test_trusted_list(router, vk):
+    trust(router)
+    router.handle(message("/trusted"))
+    assert "Имя3 Фамилия" in vk.edited[-1][2]
+
+
+def test_owner_messages_in_trusted_dialog_are_deleted_for_all(store):
+    import time
+    vk = FakeVk(users={TRUSTED: user(TRUSTED)}, history=[{"id": 99, "from_id": OWNER, "date": int(time.time())}])
+    router = Router(vk, store, COMMANDS, OWNER, sleep=lambda _: None)
+    trust(router)
+    router.handle(message("/del 1", from_id=TRUSTED, peer_id=TRUSTED, message_id=200))
+    assert vk.deleted[-1] == ([99], True)
