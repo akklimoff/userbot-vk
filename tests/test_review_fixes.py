@@ -115,7 +115,7 @@ def test_del_falls_back_to_single_deletes(store):
 
 def test_long_caption_is_rejected(router, vk):
     photo = {"type": "photo", "photo": {"sizes": [{"url": "https://x/a.jpg", "width": 1, "height": 1}]}}
-    router.handle(message("/t " + "а" * 201, from_id=STRANGER, attachments=[photo]))
+    router.handle(message("/t " + "а" * 201, from_id=STRANGER, peer_id=STRANGER, attachments=[photo]))
     assert "длиннее" in vk.sent[0]["text"]
 
 

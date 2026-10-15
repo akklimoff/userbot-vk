@@ -107,10 +107,20 @@ class Context:
 
     # в чатах после команды ничего не остаётся: отчёт уходит в личку автору, владельцу (from_id == owner_id) — в «Избранное»
     def report(self, text: str) -> None:
+        if not self.reaches_author:
+            return
         try:
             self.post(text, peer_id=self.from_id)
         except Exception:
             log.info("Не удалось написать в личку %s", self.from_id)
+
+    # личка от аккаунта владельца каждому, кто написал команду в беседе, — путь к капче и ограничениям VK за спам;
+    # сообществу не пишем вовсе, чтобы не завести переписку двух ботов
+    @property
+    def reaches_author(self) -> bool:
+        if self.from_id < 0:
+            return False
+        return self.access >= Access.TRUSTED or self.peer_id == self.from_id
 
     def answer(self, text: str) -> None:
         self.report(text)

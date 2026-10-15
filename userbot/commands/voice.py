@@ -62,12 +62,17 @@ def save(ctx: Context) -> None:
     if url is None:
         ctx.fail(NEED_VOICE)
     saved = ctx.store.get(SAVED, {})
-    key = ctx.rest(1) or next_free_number(saved)
+    named = ctx.rest(1)
+    key = named or next_free_number(saved)
     if key in saved:
         ctx.fail(f"{INVALID} Голосовое «{key}» уже есть — выберите другое название")
     if not ctx.store.put_new(SAVED, key, reupload_voice(ctx, url)):
         ctx.fail(f"{INVALID} Голосовое «{key}» уже есть — выберите другое название")
-    ctx.done(f"{SUCCESS} Голосовое сохранено как «{key}» — отправить: /ag {key}")
+    text = f"{SUCCESS} Голосовое сохранено как «{key}» — отправить: /ag {key}"
+    if named:
+        ctx.done(text)
+    else:
+        ctx.answer(text)
 
 
 def send_saved(ctx: Context) -> None:

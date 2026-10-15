@@ -150,8 +150,8 @@ def test_saved_voice_without_name_gets_next_number(router, store, monkeypatch, t
 
 def test_caption_needs_text(router, vk):
     photo = {"type": "photo", "photo": {"sizes": [{"url": "https://x/a.jpg", "width": 1, "height": 1}]}}
-    router.handle(message("/t", from_id=STRANGER, attachments=[photo]))
-    assert "Нужны фото и текст" in vk.sent[0]["text"]
+    router.handle(message("/t", from_id=STRANGER, peer_id=STRANGER, attachments=[photo]))
+    assert "Нужны фото и текст" in in_peer(vk, STRANGER)[0]["text"]
 
 
 @pytest.mark.parametrize("args, percent", [(["/d"], 50), (["/d", "1"], 50), (["/d", "10"], 5), (["/d", "11"], None),
@@ -204,5 +204,5 @@ def test_busy_media_slots_are_reported(router, vk, monkeypatch):
 
     monkeypatch.setattr(media, "heavy_slot", busy)
     photo = {"type": "photo", "photo": {"sizes": [{"url": "https://x/a.jpg", "width": 1, "height": 1}]}}
-    router.handle(message("/d", from_id=STRANGER, attachments=[photo]))
-    assert "занят" in vk.sent[0]["text"]
+    router.handle(message("/d", from_id=STRANGER, peer_id=STRANGER, attachments=[photo]))
+    assert "занят" in in_peer(vk, STRANGER)[0]["text"]

@@ -47,7 +47,7 @@ def test_plain_chatter_is_not_fetched(store):
 def test_commands_are_fetched_and_handled(store):
     vk = CountingVk("/uid 2")
     dispatcher(vk, store).dispatch(Incoming(100, CHAT, "/uid 2", STRANGER))
-    assert vk.reads == 1 and vk.sent
+    assert vk.reads == 1 and vk.deleted
 
 
 def test_banned_author_is_not_fetched(store):
@@ -95,4 +95,4 @@ def test_logging_failure_does_not_skip_command(store):
 
     vk.peer_title = broken
     process(vk, Router(vk, store, COMMANDS, vk.me_id), Incoming(100, CHAT, "/uid 2", STRANGER), True)
-    assert vk.sent
+    assert vk.deleted

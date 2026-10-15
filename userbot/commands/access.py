@@ -61,9 +61,9 @@ def unignore(ctx: Context) -> None:
 
 def disable(ctx: Context) -> None:
     if ctx.store.toggle(DISABLED):
-        ctx.done(f"{SUCCESS_NO} Команды для всех выключены — бот слушает только своих")
+        ctx.answer(f"{SUCCESS_NO} Команды для всех выключены — бот слушает только своих")
     else:
-        ctx.done(f"{SUCCESS} Команды для всех снова включены")
+        ctx.answer(f"{SUCCESS} Команды для всех снова включены")
 
 
 def trust(ctx: Context) -> None:

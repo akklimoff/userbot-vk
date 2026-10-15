@@ -7,7 +7,7 @@ def test_owner_command_is_ignored_for_others(router, vk):
 
 
 def test_public_command_answers_anyone(router, vk):
-    router.handle(message("/uid 2", from_id=STRANGER))
+    router.handle(message("/uid 2", from_id=STRANGER, peer_id=STRANGER))
     assert vk.sent[0]["text"].endswith("ID пользователя: 2")
     assert vk.sent[0]["peer_id"] == STRANGER and "reply_to" not in vk.sent[0]
 
@@ -47,7 +47,7 @@ def test_disabled_bot_serves_only_owner(router, vk, store):
 
 def test_association_runs_target_command(router, vk, store):
     store.put_new("assoc", "!id", "/uid")
-    router.handle(message("!ID 2", from_id=STRANGER))
+    router.handle(message("!ID 2", from_id=STRANGER, peer_id=STRANGER))
     assert "ID пользователя: 2" in texts(vk)[0]
 
 
@@ -59,8 +59,8 @@ def test_media_failure_is_reported(router, vk, monkeypatch):
 
     monkeypatch.setattr(media, "download", broken)
     photo = {"type": "photo", "photo": {"sizes": [{"url": "https://x/a.jpg", "width": 1, "height": 1}]}}
-    router.handle(message("/n", from_id=STRANGER, attachments=[photo]))
-    assert "Не удалось обработать файл" in vk.sent[0]["text"]
+    router.handle(message("/n", from_id=STRANGER, peer_id=STRANGER, attachments=[photo]))
+    assert "Не удалось обработать файл" in vk.sent[0]["text"] and vk.sent[0]["peer_id"] == STRANGER
 
 
 def test_unexpected_error_is_reported(router, vk, monkeypatch):
@@ -68,8 +68,8 @@ def test_unexpected_error_is_reported(router, vk, monkeypatch):
         raise RuntimeError("VK упал")
 
     monkeypatch.setattr(vk, "user", broken)
-    router.handle(message("/uid 2", from_id=STRANGER))
-    assert "Не удалось выполнить команду" in vk.sent[0]["text"]
+    router.handle(message("/uid 2", from_id=STRANGER, peer_id=STRANGER))
+    assert "Не удалось выполнить команду" in vk.sent[0]["text"] and vk.sent[0]["peer_id"] == STRANGER
 
 
 def test_wants_only_commands_and_ignored_authors(router, store):
