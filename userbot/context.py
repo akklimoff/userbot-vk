@@ -12,11 +12,11 @@ from userbot.store import Store
 
 log = logging.getLogger("userbot-vk")
 
-ERROR = "❗ |"
-INVALID = "⚠️ |"
-PROCESS = "⚡ |"
-SUCCESS = "✅ |"
-SUCCESS_NO = "❎ |"
+ERROR = "💔"
+INVALID = "🙅‍♀️"
+PROCESS = "💅"
+SUCCESS = "✨"
+SUCCESS_NO = "🥀"
 # пустой символ: VK не даёт отредактировать сообщение в пустую строку
 BLANK = "&#13;"
 TRUSTED_USERS = "trusted"
@@ -38,6 +38,8 @@ class Command:
     run: Callable[["Context"], None]
     description: str
     access: Access = Access.PUBLIC
+    icon: str = "🎀"
+    usage: str = ""
 
 
 @dataclass
@@ -152,7 +154,7 @@ class Context:
         else:
             user = None
         if user is None:
-            self.fail(f"{ERROR} Необходимо ответить на сообщение пользователя или указать на него ссылку: {usage}")
+            self.fail(f"{ERROR} Не понятно, о ком речь — ответьте на сообщение человека или укажите его: {usage}")
         return user
 
 

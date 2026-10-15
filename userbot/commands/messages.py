@@ -15,7 +15,7 @@ TTL_UNITS = {"s": 1, "с": 1, "m": 60, "м": 60, "h": 3600, "ч": 3600, "d": 864
 DELETE_FOR_ALL_WINDOW = 86400
 MAX_DELETE = 200
 MAX_REPEAT = 20
-COMMAND_LIKE = f"{INVALID} Такой текст бот принял бы за команду, поэтому не отправляю."
+COMMAND_LIKE = f"{INVALID} Такой текст бот принял бы за команду, поэтому не отправляю"
 
 
 def parse_ttl(word: str) -> int | None:
@@ -28,7 +28,7 @@ def parse_ttl(word: str) -> int | None:
 def delete_messages(ctx: Context) -> None:
     args = ctx.args
     if len(args) < 2 or not args[1].isdecimal() or not 1 <= int(args[1]) <= MAX_DELETE:
-        ctx.fail(f"{INVALID} Необходимо ввести количество сообщений от 1 до {MAX_DELETE}.")
+        ctx.fail(f"{INVALID} Сколько удалить? Так: /del 10 (от 1 до {MAX_DELETE})")
     count, wipe = int(args[1]), len(args) >= 3
     ctx.delete()
     now = time.time()
@@ -81,13 +81,12 @@ def invisible(ctx: Context) -> None:
     args = ctx.args
     ttl = parse_ttl(args[1]) if len(args) > 1 else None
     if ttl is not None and ttl not in ALLOWED_TTL:
-        ctx.fail(f"{ERROR} Неверное время исчезающего сообщения, возможные варианты: 15 сек, 1 минута, 5 минут, "
-                 f"15 минут, 1 час, 5 часов, 1 день.", seconds=5)
+        ctx.fail(f"{ERROR} Такого времени нет — можно 15s, 1m, 5m, 15m, 1h, 5h или 1d", seconds=5)
     text = ctx.rest(2 if ttl else 1)
     attachments = reattach_ids(ctx.message)
     media = own_media(ctx)
     if not (text or attachments or media):
-        ctx.fail(f"{ERROR} Необходимо написать сообщение или ответить на стикер / голосовое сообщение.", seconds=1)
+        ctx.fail(f"{ERROR} Нужен текст или ответ на своё голосовое или стикер", seconds=1)
     if ctx.is_command_like(text):
         ctx.fail(COMMAND_LIKE)
     ttl = ttl or DEFAULT_TTL
@@ -102,7 +101,7 @@ def invisible(ctx: Context) -> None:
 def repeat(ctx: Context) -> None:
     args = ctx.args
     if len(args) < 3 or not args[1].isdecimal() or not 1 <= int(args[1]) <= MAX_REPEAT:
-        ctx.fail(f"{ERROR} Использование: /repeat [количество 1-{MAX_REPEAT}] [сообщение]", seconds=1)
+        ctx.fail(f"{INVALID} Так: /repeat 5 текст (от 1 до {MAX_REPEAT} раз)", seconds=1)
     text = ctx.rest(2)
     if ctx.is_command_like(text):
         ctx.fail(COMMAND_LIKE)
@@ -118,9 +117,8 @@ def repeat(ctx: Context) -> None:
 
 
 COMMANDS = [
-    Command(("/del",), delete_messages, "удалить сообщения владельца: /del [количество] [любое слово — сначала стереть]",
-            access=Access.TRUSTED),
-    Command(("/i", "/и"), invisible, "отправить исчезающее сообщение: /i [15s|1m|5m|15m|1h|5h|1d] [текст]",
-            access=Access.TRUSTED),
-    Command(("/repeat",), repeat, "повторить сообщение: /repeat [количество] [текст]", access=Access.TRUSTED),
+    Command(("/del",), delete_messages, "удалить последние сообщения владельца; со словом — сначала стереть текст",
+            Access.TRUSTED, "🧹", "[сколько] [слово]"),
+    Command(("/i", "/и"), invisible, "исчезающее сообщение", Access.TRUSTED, "🪄", "[15s|1m|5m|15m|1h|5h|1d] [текст]"),
+    Command(("/repeat",), repeat, "повторить сообщение", Access.TRUSTED, "💋", "[1-20] [текст]"),
 ]

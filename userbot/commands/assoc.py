@@ -10,46 +10,45 @@ ALIAS = re.compile(r"[/!+\-]?\w+")
 def list_assoc(ctx: Context) -> None:
     assocs: dict[str, str] = ctx.store.get(ASSOC, {})
     if not assocs:
-        ctx.fail(f"{INVALID} У Вас нет ассоциаций.")
+        ctx.fail(f"{INVALID} Ассоциаций пока нет")
     by_command: dict[str, list[str]] = {}
     for alias, command in assocs.items():
         by_command.setdefault(command, []).append(alias)
-    lines = [f"{command}: {', '.join(aliases)}" for command, aliases in by_command.items()]
-    ctx.answer("📖 Ассоциации:<br>" + ";<br>".join(lines))
+    lines = [f"🏷 {command} ← {', '.join(aliases)}" for command, aliases in by_command.items()]
+    ctx.answer("\n".join(["📖 Ассоциации", "", *lines]))
 
 
 def set_assoc(ctx: Context) -> None:
     args = ctx.args
     if len(args) < 3:
-        ctx.fail(f"{INVALID} Правильное использование: /assoc_set [команда] [ассоциация]")
+        ctx.fail(f"{INVALID} Так: /assoc_set /uid айди")
     command, alias = args[1].lower(), args[2].lower()
     names = {name for c in ctx.commands for name in c.names}
     target = next((c for c in ctx.commands if command in c.names), None)
     if target is None:
-        ctx.fail(f"{ERROR} Такой команды нет, учтите, что необходимо писать команду полностью.\n"
-                 f"👉🏻 Например: /ban")
+        ctx.fail(f"{ERROR} Такой команды нет — напишите её полностью, например /ban")
     if target.access > ctx.access:
-        ctx.fail(f"{ERROR} Недостаточно прав, чтобы назначать ассоциации этой команде.")
+        ctx.fail(f"{ERROR} Ассоциации для этой команды назначает только владелец")
     if not ALIAS.fullmatch(alias):
-        ctx.fail(f"{INVALID} Ассоциация — одно слово из букв и цифр, можно с /, !, + или - в начале.")
+        ctx.fail(f"{INVALID} Ассоциация — одно слово из букв и цифр, можно с /, !, + или - в начале")
     if alias in names:
-        ctx.fail(f"{ERROR} `{alias}` уже является командой!")
+        ctx.fail(f"{ERROR} {alias} — это уже команда")
     if not ctx.store.put_new(ASSOC, alias, command):
-        ctx.fail(f"{ERROR} Ассоциация `{alias}` уже существует!")
-    ctx.flash(f"{SUCCESS} Создана новая ассоциация для команды {command}: `{alias}`!", seconds=5)
+        ctx.fail(f"{ERROR} Ассоциация {alias} уже есть")
+    ctx.flash(f"{SUCCESS} Теперь {alias} — это {command}", seconds=5)
 
 
 def delete_assoc(ctx: Context) -> None:
     alias = ctx.rest(1).lower()
     if not alias:
-        ctx.fail(f"{INVALID} Правильное использование: /assoc_del [ассоциация]")
+        ctx.fail(f"{INVALID} Так: /assoc_del айди")
     if not ctx.store.pop(ASSOC, alias):
-        ctx.fail(f"{INVALID} Ассоциации с таким ключом нет!")
-    ctx.flash(f"{SUCCESS} Ассоциация `{alias}` была успешно удалена.")
+        ctx.fail(f"{INVALID} Ассоциации {alias} нет")
+    ctx.flash(f"{SUCCESS} Ассоциация {alias} удалена")
 
 
 COMMANDS = [
-    Command(("/assoc",), list_assoc, "список ассоциаций", access=Access.TRUSTED),
-    Command(("/assoc_set",), set_assoc, "добавить ассоциацию", access=Access.TRUSTED),
-    Command(("/assoc_del",), delete_assoc, "удалить ассоциацию", access=Access.TRUSTED),
+    Command(("/assoc",), list_assoc, "список ассоциаций", Access.TRUSTED, "📖"),
+    Command(("/assoc_set",), set_assoc, "своё слово для команды", Access.TRUSTED, "🏷", "[команда] [слово]"),
+    Command(("/assoc_del",), delete_assoc, "удалить ассоциацию", Access.TRUSTED, "✂️", "[слово]"),
 ]

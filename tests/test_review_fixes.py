@@ -30,7 +30,7 @@ def trusted(router, store):
                                   "­/ban 9", "&#1082;ик @x"])
 def test_disguised_commands_are_never_posted(trusted, vk, text):
     trusted.handle(message(f"/repeat 1 {text}", from_id=TRUSTED))
-    assert vk.sent[-1]["text"].endswith("принял бы за команду, поэтому не отправляю.")
+    assert vk.sent[-1]["text"].endswith("принял бы за команду, поэтому не отправляю")
     assert all(m["text"] != text for m in vk.sent)
 
 

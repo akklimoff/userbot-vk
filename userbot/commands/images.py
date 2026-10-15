@@ -6,8 +6,8 @@ from userbot import media
 from userbot.attachments import image_source
 from userbot.context import ERROR, INVALID, Command, Context
 
-NEED_IMAGE = f"{ERROR} Необходимо ответить на сообщение с фотографией / стикером, либо прикрепить фотографию."
-DIST_USAGE = f"{INVALID} Правильное использование: /d [степень от 1 до 10]"
+NEED_IMAGE = f"{ERROR} Нужна фотография — прикрепите её или ответьте на фото или стикер"
+DIST_USAGE = f"{INVALID} Так: /d или /d 1…10 — чем больше число, тем сильнее жмых"
 MAX_CAPTION = 200
 
 
@@ -52,14 +52,14 @@ def caption(ctx: Context) -> None:
     source = image_source(ctx.message)
     text = ctx.rest(1)
     if source is None or source[1] != "photo" or not text:
-        ctx.fail(f"{ERROR} Необходимо прикрепить фотографию и написать текст: /text [текст]")
+        ctx.fail(f"{ERROR} Нужны фото и текст: /t ваш текст")
     if len(text) > MAX_CAPTION:
-        ctx.fail(f"{INVALID} Подпись длиннее {MAX_CAPTION} символов.")
+        ctx.fail(f"{INVALID} Подпись длиннее {MAX_CAPTION} символов — покороче, пожалуйста")
     transform(ctx, source, lambda src, dst: media.add_caption(src, dst, text))
 
 
 COMMANDS = [
-    Command(("/d", "/dist"), dist, "жмых фотографии"),
-    Command(("/n", "/negative"), negative, "перевести фотографию в негатив"),
-    Command(("/t", "/text"), caption, "добавить текст к фотографии"),
+    Command(("/d", "/dist"), dist, "жмых фото или стикера", icon="🫧", usage="[1-10]"),
+    Command(("/n", "/negative"), negative, "негатив фото или стикера", icon="🪞"),
+    Command(("/t", "/text"), caption, "подпись к фото, до 200 символов", icon="💌", usage="[текст]"),
 ]

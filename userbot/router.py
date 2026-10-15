@@ -36,13 +36,13 @@ class Router:
         except Abort:
             pass
         except MediaBusy:
-            self._report(ctx, f"{PROCESS} Бот занят обработкой других файлов, попробуйте через минуту.")
+            self._report(ctx, f"{PROCESS} Бот красит ноготочки и занят другими файлами — попробуйте через минутку")
         except MediaError as e:
             log.warning("Команда %s в %s: %s", command.names[0], message["peer_id"], e)
-            self._report(ctx, f"{ERROR} Не удалось обработать файл, попробуйте другой.")
+            self._report(ctx, f"{ERROR} Не удалось обработать файл — попробуйте другой")
         except Exception:
             log.exception("Команда %s в %s упала", command.names[0], message["peer_id"])
-            self._report(ctx, f"{ERROR} Не удалось выполнить команду.")
+            self._report(ctx, f"{ERROR} Не удалось выполнить команду, попробуйте ещё раз")
 
     def privileged(self, author: int | None) -> bool:
         return author == self._owner_id or author in self._store.get(TRUSTED_USERS, [])

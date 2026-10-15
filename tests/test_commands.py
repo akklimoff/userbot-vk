@@ -77,7 +77,7 @@ def test_invisible_sends_text_with_ttl(router, vk):
 def test_invisible_rejects_unsupported_ttl(router, vk):
     router.handle(message("/i 2h текст"))
     assert vk.sent == []
-    assert "Неверное время" in vk.edited[0][2]
+    assert "Такого времени нет" in vk.edited[0][2]
 
 
 def test_invisible_resends_own_voice(router, vk):
@@ -142,7 +142,7 @@ def test_saved_voice_flow(router, vk, store, monkeypatch, tmp_path):
 def test_caption_needs_text(router, vk):
     photo = {"type": "photo", "photo": {"sizes": [{"url": "https://x/a.jpg", "width": 1, "height": 1}]}}
     router.handle(message("/t", from_id=STRANGER, attachments=[photo]))
-    assert "написать текст" in vk.sent[0]["text"]
+    assert "Нужны фото и текст" in vk.sent[0]["text"]
 
 
 @pytest.mark.parametrize("args, percent", [(["/d"], 50), (["/d", "1"], 50), (["/d", "10"], 5), (["/d", "11"], None),
