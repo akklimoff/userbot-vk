@@ -16,6 +16,8 @@ CHAT_PEER_OFFSET = 2_000_000_000
 HTTP_TIMEOUT = 30
 TITLE_TTL_SECONDS = 3600
 REMEMBERED_SENT = 5000
+# vk_api по умолчанию ходит с v=5.92, где у кружочка нет video.type=video_message и его не отличить от обычного видео
+MESSAGES_API_VERSION = "5.131"
 
 
 # vk_api не задаёт таймаут и держит общую блокировку на время запроса: одно зависшее соединение остановило бы бота
@@ -57,7 +59,7 @@ class VkClient:
                                int(getattr(event, "random_id", 0) or 0))
 
     def message(self, message_id: int) -> dict:
-        return self._api.messages.getById(message_ids=message_id)["items"][0]
+        return self._api.messages.getById(message_ids=message_id, v=MESSAGES_API_VERSION)["items"][0]
 
     # random_id запоминается до отправки, чтобы long poll не успел вернуть сообщение раньше, чем оно станет «своим»
     def send(self, peer_id: int, text: str | None = None, attachment: str | None = None,
