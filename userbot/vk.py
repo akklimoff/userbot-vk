@@ -1,4 +1,5 @@
 from collections.abc import Iterator
+from dataclasses import dataclass
 from functools import lru_cache
 
 import vk_api
@@ -11,6 +12,13 @@ from userbot.attachments import attachment_id
 CHAT_PEER_OFFSET = 2_000_000_000
 
 
+@dataclass(frozen=True)
+class Incoming:
+    message_id: int
+    text: str
+    author: int | None
+
+
 class VkClient:
     def __init__(self, token: str):
         self._session = vk_api.VkApi(token=token)
@@ -18,10 +26,11 @@ class VkClient:
         self._upload = VkUpload(self._session)
         self.me_id: int = self._api.users.get()[0]["id"]
 
-    def listen(self) -> Iterator[int]:
+    def listen(self) -> Iterator[Incoming]:
         for event in VkLongPoll(self._session).listen():
             if event.type == VkEventType.MESSAGE_NEW:
-                yield event.message_id
+                author = self.me_id if event.from_me else getattr(event, "user_id", None)
+                yield Incoming(event.message_id, getattr(event, "message", "") or "", author)
 
     def message(self, message_id: int) -> dict:
         return self._api.messages.getById(message_ids=message_id)["items"][0]
@@ -60,11 +69,11 @@ class VkClient:
         user = self._api.users.get(user_ids=peer_id)[0]
         return f"{user['first_name']} {user['last_name']}"
 
-    def privacy_allowed(self, key: str) -> list[int]:
+    def privacy_value(self, key: str) -> dict:
         for setting in self._api.account.getPrivacySettings()["settings"]:
             if setting["key"] == key:
-                return list(setting.get("value", {}).get("owners", {}).get("allowed", []))
-        return []
+                return setting.get("value") or {}
+        return {}
 
     def set_privacy_allowed(self, key: str, owners: list[int]) -> None:
         self._api.account.setPrivacy(key=key, value=",".join(map(str, owners)) if owners else "only_me")

@@ -9,6 +9,7 @@ class FakeVk:
         self.users = {OWNER: user(OWNER), STRANGER: user(STRANGER), **(users or {})}
         self._history = history or []
         self.privacy = privacy or {}
+        self.privacy_values = {}
         self.sent, self.edited, self.deleted, self.uploads = [], [], [], []
 
     def send(self, peer_id, text=None, **params):
@@ -28,8 +29,8 @@ class FakeVk:
         key = int(user_id) if str(user_id).isdigit() else user_id
         return self.users.get(key)
 
-    def privacy_allowed(self, key):
-        return list(self.privacy.get(key, []))
+    def privacy_value(self, key):
+        return self.privacy_values.get(key) or {"owners": {"allowed": list(self.privacy.get(key, []))}}
 
     def set_privacy_allowed(self, key, owners):
         self.privacy[key] = list(owners)

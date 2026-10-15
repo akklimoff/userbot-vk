@@ -61,3 +61,22 @@ def test_media_failure_is_reported(router, vk, monkeypatch):
     photo = {"type": "photo", "photo": {"sizes": [{"url": "https://x/a.jpg", "width": 1, "height": 1}]}}
     router.handle(message("/n", from_id=STRANGER, attachments=[photo]))
     assert "Не удалось обработать файл" in vk.sent[0]["text"]
+
+
+def test_unexpected_error_is_reported(router, vk, monkeypatch):
+    def broken(*_args, **_kwargs):
+        raise RuntimeError("VK упал")
+
+    monkeypatch.setattr(vk, "user", broken)
+    router.handle(message("/uid 2", from_id=STRANGER))
+    assert "Не удалось выполнить команду" in vk.sent[0]["text"]
+
+
+def test_wants_only_commands_and_ignored_authors(router, store):
+    store.put_new("assoc", "ау", "/uid")
+    store.add_to("ignore", 7)
+    assert router.wants("/help", STRANGER)
+    assert router.wants("Ау привет", STRANGER)
+    assert router.wants("что угодно", 7)
+    assert not router.wants("просто текст", STRANGER)
+    assert not router.wants("", STRANGER)

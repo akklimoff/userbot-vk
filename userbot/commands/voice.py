@@ -31,7 +31,7 @@ def distort(ctx: Context) -> None:
     args = ctx.args
     if len(args) < 2 or args[1] not in media.VOICE_EFFECTS:
         ctx.fail(AUDIO_USAGE)
-    with tempfile.TemporaryDirectory() as tmp:
+    with media.heavy_slot(), tempfile.TemporaryDirectory() as tmp:
         result = os.path.join(tmp, "result.ogg")
         media.apply_voice_effect(media.download(url, tmp, ".ogg"), result, args[1])
         voice = ctx.vk.upload_voice(result, ctx.peer_id)
@@ -43,7 +43,7 @@ def song(ctx: Context) -> None:
     audio = attachment.get("audio") if attachment else None
     if not audio or not audio.get("url"):
         ctx.fail(f"{ERROR} Необходимо прикрепить аудиозапись или ответить на сообщение с аудиозаписью.")
-    with tempfile.TemporaryDirectory() as tmp:
+    with media.heavy_slot(), tempfile.TemporaryDirectory() as tmp:
         result = os.path.join(tmp, "result.wav")
         media.song_to_voice(media.download(audio["url"], tmp, ".mp3"), result)
         voice = ctx.vk.upload_voice(result, ctx.peer_id)

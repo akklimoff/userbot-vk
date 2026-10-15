@@ -8,7 +8,7 @@ from userbot.commands import COMMANDS
 from userbot.config import Settings
 from userbot.router import Router
 from userbot.store import Store
-from userbot.vk import CHAT_PEER_OFFSET, VkClient
+from userbot.vk import CHAT_PEER_OFFSET, Incoming, VkClient
 
 log = logging.getLogger("userbot-vk")
 
@@ -42,22 +42,33 @@ def log_message(vk, message: dict) -> None:
     log.info("[%s / %s]: %s", place, vk.peer_title(message["from_id"]), summary(message))
 
 
-def process(vk, router: Router, message_id: int, log_messages: bool) -> None:
+# messages.getById на каждое сообщение каждой беседы забивал бы лимит VK (~3 запроса в секунду на токен),
+# поэтому полное сообщение читается только для команд, игнора и журнала
+def process(vk, router: Router, incoming: Incoming, log_messages: bool) -> None:
+    if not log_messages and not router.wants(incoming.text, incoming.author):
+        return
     try:
-        message = vk.message(message_id)
-        if log_messages:
+        message = vk.message(incoming.message_id)
+    except Exception:
+        log.exception("Не удалось прочитать сообщение %s", incoming.message_id)
+        return
+    if log_messages:
+        try:
             log_message(vk, message)
+        except Exception:
+            log.warning("Не удалось записать в журнал сообщение %s", incoming.message_id)
+    try:
         router.handle(message)
     except Exception:
-        log.exception("Ошибка обработки сообщения %s", message_id)
+        log.exception("Ошибка обработки сообщения %s", incoming.message_id)
 
 
 def listen_forever(vk, router: Router, pool: Executor, log_messages: bool,
                    sleep: Callable[[float], None] = time.sleep) -> None:
     while True:
         try:
-            for message_id in vk.listen():
-                pool.submit(process, vk, router, message_id, log_messages)
+            for incoming in vk.listen():
+                pool.submit(process, vk, router, incoming, log_messages)
         except Exception:
             log.exception("Long poll упал, переподключение через %.0f с", RECONNECT_SECONDS)
         sleep(RECONNECT_SECONDS)

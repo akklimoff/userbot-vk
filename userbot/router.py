@@ -4,8 +4,8 @@ from collections.abc import Callable, Sequence
 
 from userbot.commands.access import BANNED, BANNED_PEERS, DISABLED, IGNORED
 from userbot.commands.assoc import ASSOC
-from userbot.context import ERROR, Abort, Command, Context
-from userbot.media import MediaError
+from userbot.context import ERROR, PROCESS, Abort, Command, Context
+from userbot.media import MediaBusy, MediaError
 from userbot.store import Store
 
 log = logging.getLogger("userbot-vk")
@@ -27,17 +27,33 @@ class Router:
         command = self.command_for(message["text"].split()[0].lower())
         if command is None or (command.owner_only and message["from_id"] != self._owner_id):
             return
-        ctx = Context(self._vk, self._store, self._owner_id, message, self._commands, self._sleep)
+        ctx = Context(self._vk, self._store, self._owner_id, message, self._commands, self._sleep,
+                      lambda word: self.command_for(word) is not None)
         try:
             command.run(ctx)
         except Abort:
             pass
+        except MediaBusy:
+            self._report(ctx, f"{PROCESS} Бот занят обработкой других файлов, попробуйте через минуту.")
         except MediaError as e:
             log.warning("Команда %s в %s: %s", command.names[0], message["peer_id"], e)
-            try:
-                ctx.fail(f"{ERROR} Не удалось обработать файл, попробуйте другой.")
-            except Abort:
-                pass
+            self._report(ctx, f"{ERROR} Не удалось обработать файл, попробуйте другой.")
+        except Exception:
+            log.exception("Команда %s в %s упала", command.names[0], message["peer_id"])
+            self._report(ctx, f"{ERROR} Не удалось выполнить команду.")
+
+    def wants(self, text: str, author: int | None) -> bool:
+        words = text.split()
+        return author in self._store.get(IGNORED, []) or bool(words) and self.command_for(words[0].lower()) is not None
+
+    @staticmethod
+    def _report(ctx: Context, text: str) -> None:
+        try:
+            ctx.fail(text)
+        except Abort:
+            pass
+        except Exception:
+            log.exception("Не удалось сообщить об ошибке в %s", ctx.peer_id)
 
     def command_for(self, word: str) -> Command | None:
         return self._by_name.get(self._store.get(ASSOC, {}).get(word, word))

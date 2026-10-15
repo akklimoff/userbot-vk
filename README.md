@@ -15,7 +15,7 @@
 Перенести `data.json` со старой установки:
 
 ```
-docker compose cp ./data.json userbot-vk:/app/state/data.json && docker compose restart
+docker compose stop && docker compose cp ./data.json userbot-vk:/app/state/data.json && docker compose start
 ```
 
 ## Команды

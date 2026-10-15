@@ -20,7 +20,7 @@ def dist_percent(args: list[str]) -> int | None:
 
 def transform(ctx: Context, source: tuple[str, str], change: Callable[[str, str], None]) -> None:
     url, kind = source
-    with tempfile.TemporaryDirectory() as tmp:
+    with media.heavy_slot(), tempfile.TemporaryDirectory() as tmp:
         result = os.path.join(tmp, "result.png")
         change(media.download(url, tmp, ".png"), result)
         if kind == "sticker":

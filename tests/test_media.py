@@ -51,3 +51,17 @@ def test_sticker_only_from_reply():
     sticker = {"type": "sticker", "sticker": {"images": [{"url": "s", "width": 128}]}}
     assert image_source({"attachments": [sticker]}) is None
     assert image_source({"attachments": [], "reply_message": {"attachments": [sticker]}}) == ("s", "sticker")
+
+
+def test_negate_keeps_palette_transparency(tmp_path):
+    source, target = tmp_path / "in.png", tmp_path / "out.png"
+    Image.new("RGBA", (2, 2), (0, 0, 0, 0)).convert("P").save(source, transparency=0)
+    media.negate(str(source), str(target))
+    assert Image.open(target).getpixel((0, 0))[3] == 0
+
+
+def test_broken_image_becomes_media_error(tmp_path):
+    source = tmp_path / "in.png"
+    source.write_bytes(b"not an image")
+    with pytest.raises(media.MediaError):
+        media.negate(str(source), str(tmp_path / "out.png"))

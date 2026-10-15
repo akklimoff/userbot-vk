@@ -3,18 +3,19 @@ import random
 import re
 import time
 
-from userbot.attachments import attachment_id, first_attachment
+from userbot.attachments import attachment_id, first_attachment, reattach_ids
 from userbot.context import BLANK, ERROR, INVALID, Command, Context
 
 log = logging.getLogger("userbot-vk")
 
 DEFAULT_TTL = 86400
 ALLOWED_TTL = (15, 60, 300, 900, 3600, 18000, 86400)
-TTL_UNITS = {"s": 1, "с": 1, "m": 60, "м": 60, "h": 3600, "ч": 3600}
+TTL_UNITS = {"s": 1, "с": 1, "m": 60, "м": 60, "h": 3600, "ч": 3600, "d": 86400, "д": 86400}
 # VK удаляет у всех только сообщения моложе суток
 DELETE_FOR_ALL_WINDOW = 86400
 MAX_DELETE = 200
 MAX_REPEAT = 20
+COMMAND_LIKE = f"{INVALID} Такой текст бот принял бы за команду, поэтому не отправляю."
 
 
 def parse_ttl(word: str) -> int | None:
@@ -69,11 +70,13 @@ def invisible(ctx: Context) -> None:
         ctx.fail(f"{ERROR} Неверное время исчезающего сообщения, возможные варианты: 15 сек, 1 минута, 5 минут, "
                  f"15 минут, 1 час, 5 часов, 1 день.", seconds=5)
     text = ctx.rest(2 if ttl else 1)
-    attachments = ",".join(attachment_id(a["type"], a[a["type"]]) for a in ctx.message.get("attachments") or [])
+    attachments = reattach_ids(ctx.message)
     forward = ",".join(str(m["id"]) for m in ctx.message.get("fwd_messages") or [] if m.get("id"))
     media = own_media(ctx)
     if not (text or attachments or forward or media):
         ctx.fail(f"{ERROR} Необходимо написать сообщение или ответить на стикер / голосовое сообщение.", seconds=1)
+    if ctx.is_command_like(text):
+        ctx.fail(COMMAND_LIKE)
     ttl = ttl or DEFAULT_TTL
     ctx.edit(BLANK)
     ctx.delete()
@@ -90,6 +93,8 @@ def repeat(ctx: Context) -> None:
     if len(args) < 3 or not args[1].isdecimal() or not 1 <= int(args[1]) <= MAX_REPEAT:
         ctx.fail(f"{ERROR} Использование: /repeat [количество 1-{MAX_REPEAT}] [сообщение]", seconds=1)
     text = ctx.rest(2)
+    if ctx.is_command_like(text):
+        ctx.fail(COMMAND_LIKE)
     ctx.delete()
     for _ in range(int(args[1])):
         try:

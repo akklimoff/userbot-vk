@@ -1,7 +1,15 @@
 def attachment_id(kind: str, obj: dict) -> str:
     key = f"_{obj['access_key']}" if obj.get("access_key") else ""
-    owner = obj.get("owner_id") or obj.get("from_id")
+    owner = obj.get("owner_id") or obj.get("to_id") or obj.get("from_id")
     return f"{kind}{owner}_{obj['id']}{key}"
+
+
+REATTACHABLE = frozenset({"photo", "video", "audio", "doc", "audio_message", "wall", "market", "poll"})
+
+
+def reattach_ids(message: dict) -> str:
+    return ",".join(attachment_id(a["type"], a[a["type"]]) for a in message.get("attachments") or []
+                    if a["type"] in REATTACHABLE and a[a["type"]].get("id") is not None)
 
 
 def first_attachment(message: dict) -> dict | None:

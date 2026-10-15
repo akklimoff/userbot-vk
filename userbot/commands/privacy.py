@@ -18,7 +18,12 @@ def change_access(ctx: Context, section: tuple[str, str], opening: bool) -> None
         ctx.fail(f"{INVALID} Данную команду нельзя использовать на самого себя!")
     if opening and not user.get("is_friend"):
         ctx.fail(f"{INVALID} {mention(user)} не находится у Вас в друзьях!")
-    allowed = ctx.vk.privacy_allowed(key)
+    value = ctx.vk.privacy_value(key)
+    owners = value.get("owners") or {}
+    if value.get("category") not in (None, "only_me") or owners.get("excluded") or value.get("lists"):
+        ctx.fail(f"{INVALID} Доступ к {label} настроен сложнее, чем «только выбранные люди», — "
+                 f"измените его в настройках VK, чтобы не потерять.")
+    allowed = list(owners.get("allowed") or [])
     if opening and user["id"] in allowed:
         ctx.fail(f"{INVALID} У пользователя {mention(user)} уже есть доступ к {label}!")
     if not opening and user["id"] not in allowed:

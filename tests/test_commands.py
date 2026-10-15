@@ -58,7 +58,7 @@ def test_command_names_are_unique():
     assert len(names) == len(set(names))
 
 
-@pytest.mark.parametrize("word, ttl", [("15s", 15), ("5м", 300), ("1h", 3600), ("5ч", 18000), ("2x", None),
+@pytest.mark.parametrize("word, ttl", [("15s", 15), ("5м", 300), ("1h", 3600), ("5ч", 18000), ("1d", 86400), ("1д", 86400), ("2x", None),
                                         ("текст", None), ("10", None)])
 def test_parse_ttl(word, ttl):
     assert parse_ttl(word) == ttl
@@ -151,3 +151,45 @@ def test_dist_percent(args, percent):
                                        ("123", "123")])
 def test_user_ref(text, ref):
     assert user_ref(text) == ref
+
+
+def test_invisible_skips_link_attachments(router, vk):
+    link = {"type": "link", "link": {"url": "https://example.com", "title": "x"}}
+    photo = {"type": "photo", "photo": {"owner_id": 1, "id": 9, "access_key": "a"}}
+    router.handle(message("/i 5m смотри https://example.com", attachments=[link, photo]))
+    assert vk.sent == [{"peer_id": CHAT, "text": "смотри https://example.com", "attachment": "photo1_9_a",
+                        "expire_ttl": 300}]
+
+
+def test_invisible_keeps_message_when_text_is_command_like(router, vk):
+    router.handle(message("/i 5m +s"))
+    assert vk.sent == []
+    assert "принял бы за команду" in vk.edited[0][2]
+
+
+def test_own_aliases_are_never_posted(router, vk, store):
+    store.put_new("assoc", "ау", "/uid")
+    router.handle(message("/repeat 2 ау как дела"))
+    assert vk.sent == []
+
+
+def test_privacy_keeps_complex_settings(router, vk):
+    vk.privacy_values["photos_saved"] = {"category": "friends", "owners": {"excluded": [7]}}
+    router.handle(message("+s", reply_message={"id": 5, "from_id": STRANGER}))
+    assert "photos_saved" not in vk.privacy
+    assert "настроен сложнее" in vk.edited[0][2]
+
+
+def test_busy_media_slots_are_reported(router, vk, monkeypatch):
+    from contextlib import contextmanager
+    from userbot import media
+
+    @contextmanager
+    def busy():
+        raise media.MediaBusy()
+        yield
+
+    monkeypatch.setattr(media, "heavy_slot", busy)
+    photo = {"type": "photo", "photo": {"sizes": [{"url": "https://x/a.jpg", "width": 1, "height": 1}]}}
+    router.handle(message("/d", from_id=STRANGER, attachments=[photo]))
+    assert "занят" in vk.sent[0]["text"]

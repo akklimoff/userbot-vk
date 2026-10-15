@@ -38,6 +38,7 @@ class Context:
     message: dict
     commands: Sequence[Command] = field(default=())
     sleep: Callable[[float], None] = time.sleep
+    triggers_command: Callable[[str], bool] = lambda _: False
 
     @property
     def args(self) -> list[str]:
@@ -67,8 +68,13 @@ class Context:
         parts = self.message["text"].split(None, skip)
         return parts[skip] if len(parts) > skip else ""
 
+    def is_command_like(self, text: str | None) -> bool:
+        words = (text or "").split()
+        return looks_like_command(text) or bool(words) and self.triggers_command(words[0].lower())
+
+    # бот пишет от лица владельца, и long poll вернёт ему же его сообщение как команду владельца
     def post(self, text: str | None = None, **params) -> bool:
-        if looks_like_command(text):
+        if self.is_command_like(text):
             log.warning("Сообщение в %s похоже на команду бота и не отправлено", self.peer_id)
             return False
         self.vk.send(self.peer_id, text, **params)

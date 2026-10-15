@@ -3,6 +3,8 @@ import re
 import shutil
 import subprocess
 import textwrap
+import threading
+from contextlib import contextmanager
 from urllib.parse import urlparse
 
 import requests
@@ -12,6 +14,8 @@ DOWNLOAD_TIMEOUT = 30
 MAX_DOWNLOAD_BYTES = 50 * 1024 * 1024
 TOOL_TIMEOUT = 120
 FONT_SIZE = 24
+HEAVY_JOBS = 2
+MAX_RESCALE_SIDE = 1024
 FONT_CANDIDATES = ("DejaVuSans.ttf", "/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf", "Arial Unicode.ttf")
 
 VOICE_EFFECTS = {
@@ -24,6 +28,33 @@ VOICE_EFFECTS = {
 
 class MediaError(Exception):
     pass
+
+
+class MediaBusy(MediaError):
+    pass
+
+
+_heavy = threading.BoundedSemaphore(HEAVY_JOBS)
+
+
+# ffmpeg и seam carving ImageMagick съедают CPU и сотни мегабайт: без лимита публичные команды кладут контейнер по OOM
+@contextmanager
+def heavy_slot():
+    if not _heavy.acquire(blocking=False):
+        raise MediaBusy()
+    try:
+        yield
+    finally:
+        _heavy.release()
+
+
+def open_image(path: str) -> Image.Image:
+    try:
+        image = Image.open(path)
+        image.load()
+    except (OSError, Image.DecompressionBombError) as e:
+        raise MediaError(f"не удалось открыть картинку: {e}") from e
+    return image
 
 
 def local_name(url: str, default_suffix: str) -> str:
@@ -67,11 +98,14 @@ def song_to_voice(source: str, target: str) -> None:
 def liquid_rescale(source: str, target: str, percent: int) -> None:
     # в Debian с ImageMagick 7 есть только magick, в старых сборках — только convert
     binary = "magick" if shutil.which("magick") else "convert"
-    run_tool([binary, source, "-liquid-rescale", f"{percent}x{percent}%", f"png:{target}"])
+    run_tool([binary, source, "-resize", f"{MAX_RESCALE_SIDE}x{MAX_RESCALE_SIDE}>",
+              "-liquid-rescale", f"{percent}x{percent}%", f"png:{target}"])
 
 
 def negate(source: str, target: str) -> None:
-    image = Image.open(source)
+    image = open_image(source)
+    if image.mode in ("P", "LA", "PA") or "transparency" in image.info:
+        image = image.convert("RGBA")
     if image.mode == "RGBA":
         *colors, alpha = image.split()
         inverted = ImageOps.invert(Image.merge("RGB", colors))
@@ -91,7 +125,7 @@ def caption_font() -> ImageFont.FreeTypeFont | ImageFont.ImageFont:
 
 # текст рисуется Pillow, а не ImageMagick: в label: строка с @ читает файл с диска, а через shell — выполняет команды
 def add_caption(source: str, target: str, text: str) -> None:
-    picture = ImageOps.expand(ImageOps.expand(Image.open(source).convert("RGB"), 3, "black"), 2, "white")
+    picture = ImageOps.expand(ImageOps.expand(open_image(source).convert("RGB"), 3, "black"), 2, "white")
     font = caption_font()
     draw = ImageDraw.Draw(picture)
     chars_per_line = max(10, picture.width // max(1, int(draw.textlength("о", font=font))))
