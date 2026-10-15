@@ -1,0 +1,43 @@
+from functools import partial
+
+from userbot.context import ERROR, INVALID, SUCCESS, SUCCESS_NO, Command, Context, mention
+
+AUDIOS = ("audios", "аудиозаписям")
+SAVED_PHOTOS = ("photos_saved", "сохрам")
+
+
+def change_access(ctx: Context, section: tuple[str, str], opening: bool) -> None:
+    key, label = section
+    reply = ctx.reply_message
+    if reply is None:
+        ctx.fail(f"{ERROR} Необходимо ответить на сообщение пользователя.")
+    user = ctx.vk.user(reply["from_id"], "is_friend")
+    if user is None:
+        ctx.fail(f"{ERROR} Не удалось найти пользователя.")
+    if user["id"] == ctx.owner_id:
+        ctx.fail(f"{INVALID} Данную команду нельзя использовать на самого себя!")
+    if opening and not user.get("is_friend"):
+        ctx.fail(f"{INVALID} {mention(user)} не находится у Вас в друзьях!")
+    allowed = ctx.vk.privacy_allowed(key)
+    if opening and user["id"] in allowed:
+        ctx.fail(f"{INVALID} У пользователя {mention(user)} уже есть доступ к {label}!")
+    if not opening and user["id"] not in allowed:
+        ctx.fail(f"{INVALID} У пользователя {mention(user)} нет доступа к {label}!")
+    if opening:
+        ctx.vk.set_privacy_allowed(key, [*allowed, user["id"]])
+        ctx.edit(f"{SUCCESS} Пользователю {mention(user)} открыт доступ к {label}!")
+    else:
+        ctx.vk.set_privacy_allowed(key, [i for i in allowed if i != user["id"]])
+        ctx.edit(f"{SUCCESS_NO} Пользователю {mention(user)} закрыт доступ к {label}!")
+
+
+COMMANDS = [
+    Command(("+s", "+saves", "+с", "+сохры"), partial(change_access, section=SAVED_PHOTOS, opening=True),
+            "открыть сохры пользователю (ответом)", owner_only=True),
+    Command(("-s", "-saves", "-с", "-сохры"), partial(change_access, section=SAVED_PHOTOS, opening=False),
+            "закрыть сохры пользователю (ответом)", owner_only=True),
+    Command(("+a", "+audios", "+м", "+музыка"), partial(change_access, section=AUDIOS, opening=True),
+            "открыть аудиозаписи пользователю (ответом)", owner_only=True),
+    Command(("-a", "-audios", "-м", "-музыка"), partial(change_access, section=AUDIOS, opening=False),
+            "закрыть аудиозаписи пользователю (ответом)", owner_only=True),
+]
