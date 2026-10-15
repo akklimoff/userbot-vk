@@ -1,5 +1,6 @@
 import logging
 import os
+import shutil
 import threading
 import time
 from collections import defaultdict, deque
@@ -15,6 +16,8 @@ from userbot.vk import CHAT_PEER_OFFSET, Incoming, VkClient
 log = logging.getLogger("userbot-vk")
 
 RECONNECT_SECONDS = 5.0
+CONNECT_RETRY_SECONDS = 60.0
+LEGACY_STATE = "data.json"
 STRANGER_COMMANDS_PER_MINUTE = 5
 STRANGER_BACKLOG = 32
 ATTACHMENT_NAMES = {
@@ -123,15 +126,66 @@ def listen_forever(vk, dispatcher: Dispatcher, sleep: Callable[[float], None] = 
         sleep(RECONNECT_SECONDS)
 
 
-def run() -> None:
-    logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
-    settings = Settings()
-    vk = VkClient(settings.vk_token)
-    store = Store(os.path.join(settings.state_dir, "data.json"))
-    router = Router(vk, store, COMMANDS, vk.me_id)
+def connect(number: int, token: str, sleep: Callable[[float], None] = time.sleep) -> VkClient:
+    failures = 0
+    while True:
+        try:
+            return VkClient(token)
+        except Exception as e:
+            failures += 1
+            if failures == 1:
+                log.exception("Токен №%d не подключился, повтор через %.0f с", number, CONNECT_RETRY_SECONDS)
+            else:
+                log.warning("Токен №%d снова не подключился (%d раз): %s", number, failures, e)
+        sleep(CONNECT_RETRY_SECONDS)
+
+
+# до нескольких аккаунтов настройки жили в state/data.json — они принадлежат первому токену; файл остаётся на месте,
+# чтобы откат на старую версию не потерял настройки
+def state_path(state_dir: str, account_id: int, first: bool) -> str:
+    path = os.path.join(state_dir, f"{account_id}.json")
+    legacy = os.path.join(state_dir, LEGACY_STATE)
+    if first and not os.path.exists(path) and os.path.exists(legacy):
+        shutil.copyfile(legacy, f"{path}.tmp")
+        os.replace(f"{path}.tmp", path)
+        log.info("Настройки %s скопированы в %s", legacy, path)
+    return path
+
+
+# остальные аккаунты держат процесс живым, и Docker не перезапустит упавший — перезапускаем контейнер целиком
+def serve(number: int, token: str, settings: Settings, accounts: dict[int, int]) -> None:
+    try:
+        serve_account(number, token, settings, accounts)
+    except BaseException:
+        log.exception("Аккаунт токена №%d упал, перезапуск", number)
+        logging.shutdown()
+        os._exit(1)
+
+
+def serve_account(number: int, token: str, settings: Settings, accounts: dict[int, int]) -> None:
+    vk = connect(number, token)
+    if accounts.setdefault(vk.me_id, number) != number:
+        log.error("Токен №%d от того же аккаунта id=%s, что и токен №%d, — пропускаю", number, vk.me_id,
+                  accounts[vk.me_id])
+        return
+    store = Store(state_path(settings.state_dir, vk.me_id, number == 1))
+    router = Router(vk, store, COMMANDS, vk.me_id, own_accounts=accounts)
     log.info("userbot-vk запущен, id=%s", vk.me_id)
-    with ThreadPoolExecutor(max_workers=settings.workers) as pool:
+    with ThreadPoolExecutor(max_workers=settings.workers, thread_name_prefix=f"account-{number}") as pool:
         listen_forever(vk, Dispatcher(vk, router, pool, settings.log_messages))
+
+
+def run() -> None:
+    logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s [%(threadName)s] %(message)s")
+    settings = Settings()
+    accounts: dict[int, int] = {}
+    threads = [threading.Thread(target=serve, args=(number, token, settings, accounts), name=f"account-{number}",
+                                daemon=True)
+               for number, token in enumerate(settings.tokens, 1)]
+    for thread in threads:
+        thread.start()
+    for thread in threads:
+        thread.join()
 
 
 if __name__ == "__main__":
