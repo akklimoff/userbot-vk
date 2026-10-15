@@ -31,7 +31,8 @@ def test_corrupt_file_is_kept_aside(tmp_path):
     path.write_text("{oops", encoding="utf-8")
     store = Store(str(path))
     assert store.get("banned") is None
-    assert (tmp_path / "data.json.broken").read_text(encoding="utf-8") == "{oops"
+    [broken] = tmp_path.glob("data.json.broken-*")
+    assert broken.read_text(encoding="utf-8") == "{oops"
 
 
 def test_get_returns_a_copy(tmp_path):

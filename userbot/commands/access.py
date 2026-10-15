@@ -7,10 +7,17 @@ IGNORED = "ignore"
 DISABLED = "disabled"
 
 
+# иначе доверенный обходил бы правило «доверием управляет только владелец», блокируя других доверенных
+def protect_trusted(ctx: Context, user: dict) -> None:
+    if not ctx.is_owner and user["id"] in ctx.store.get(TRUSTED_USERS, []):
+        ctx.fail(f"{INVALID} {mention(user)} — доверенный, это может сделать только владелец.")
+
+
 def ban(ctx: Context) -> None:
     user = ctx.target("/ban [пользователь]")
     if user["id"] == ctx.owner_id:
         ctx.fail(f"{INVALID} Нельзя заблокировать самого себя!")
+    protect_trusted(ctx, user)
     if not ctx.store.add_to(BANNED, user["id"]):
         ctx.fail(f"{INVALID} {mention(user)} уже заблокирован.")
     ctx.answer(f"{SUCCESS} {mention(user)} был заблокирован!")
@@ -39,6 +46,7 @@ def ignore(ctx: Context) -> None:
     user = ctx.target("/ignore [пользователь]")
     if user["id"] == ctx.owner_id:
         ctx.fail(f"{ERROR} Нельзя игнорировать самого себя!")
+    protect_trusted(ctx, user)
     if not ctx.store.add_to(IGNORED, user["id"]):
         ctx.fail(f"{INVALID} {mention(user)} уже игнорируется.")
     ctx.answer(f"{SUCCESS} {mention(user)} теперь будет игнорироваться!")
@@ -78,8 +86,8 @@ def list_trusted(ctx: Context) -> None:
     ids = ctx.store.get(TRUSTED_USERS, [])
     if not ids:
         ctx.fail(f"{INVALID} Доверенных нет.")
-    users = [ctx.vk.user(user_id) for user_id in ids]
-    names = [mention(u) if u else f"id{user_id}" for user_id, u in zip(ids, users)]
+    users = {u["id"]: u for u in ctx.vk.users(ids)}
+    names = [mention(users[user_id]) if user_id in users else f"id{user_id}" for user_id in ids]
     ctx.answer("🤝 Доверенные: " + ", ".join(names))
 
 

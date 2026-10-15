@@ -1,5 +1,5 @@
 # vk-bot, если когда-нибудь окажется на этом же аккаунте, считает всё, что аккаунт отправил, командой владельца.
-# Разбор повторяет vk-mcp (common/commands.py) и vk-userbot (userbot/commands.py): меняется там — меняй здесь.
+# Разбор повторяет vk-mcp/common/commands.py и vk-userbot/userbot/commands.py: меняется там — меняй здесь.
 COMMAND_WORDS = frozenset({"кик", "kick", "бан", "чс", "ban", "пермобан", "добавить", "вернуть", "мут", "mute",
                            "стата", "статистика", "неактив"})
 DELETE_WORD = "смс"

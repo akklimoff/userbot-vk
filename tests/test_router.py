@@ -75,8 +75,8 @@ def test_unexpected_error_is_reported(router, vk, monkeypatch):
 def test_wants_only_commands_and_ignored_authors(router, store):
     store.put_new("assoc", "ау", "/uid")
     store.add_to("ignore", 7)
-    assert router.wants("/help", STRANGER)
-    assert router.wants("Ау привет", STRANGER)
-    assert router.wants("что угодно", 7)
-    assert not router.wants("просто текст", STRANGER)
-    assert not router.wants("", STRANGER)
+    assert router.wants("/help", STRANGER, CHAT)
+    assert router.wants("Ау привет", STRANGER, CHAT)
+    assert router.wants("что угодно", 7, CHAT)
+    assert not router.wants("просто текст", STRANGER, CHAT)
+    assert not router.wants("", STRANGER, CHAT)

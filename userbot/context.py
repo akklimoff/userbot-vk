@@ -1,6 +1,8 @@
+import html
 import logging
 import re
 import time
+import unicodedata
 from collections.abc import Callable, Sequence
 from dataclasses import dataclass, field
 from enum import IntEnum
@@ -47,6 +49,7 @@ class Context:
     commands: Sequence[Command] = field(default=())
     sleep: Callable[[float], None] = time.sleep
     triggers_command: Callable[[str], bool] = lambda _: False
+    deleted: bool = False
 
     @property
     def args(self) -> list[str]:
@@ -84,8 +87,9 @@ class Context:
         return parts[skip] if len(parts) > skip else ""
 
     def is_command_like(self, text: str | None) -> bool:
-        words = (text or "").split()
-        return looks_like_command(text) or bool(words) and self.triggers_command(words[0].lower())
+        shown = as_shown(text)
+        words = shown.split()
+        return looks_like_command(shown) or bool(words) and self.triggers_command(words[0].lower())
 
     # бот пишет от лица владельца, и long poll вернёт ему же его сообщение как команду владельца
     def post(self, text: str | None = None, **params) -> bool:
@@ -105,6 +109,7 @@ class Context:
     def delete(self) -> None:
         try:
             self.vk.delete([self.message["id"]], self.for_all)
+            self.deleted = True
         except Exception:
             if self.is_owner:
                 raise
@@ -115,9 +120,13 @@ class Context:
             self.edit(BLANK)
         self.delete()
 
+    @property
+    def editable(self) -> bool:
+        return self.is_owner and not self.deleted
+
     def flash(self, text: str, seconds: float = 3) -> None:
-        if not self.is_owner:
-            self.send(text)
+        if not self.editable:
+            self.send(text, reply=not self.deleted)
             return
         self.edit(text)
         self.sleep(seconds)
@@ -125,34 +134,48 @@ class Context:
 
     # VK даёт редактировать только сообщения владельца, остальным — ответом
     def answer(self, text: str) -> None:
-        if self.is_owner:
+        if self.editable:
             self.edit(text)
         else:
-            self.send(text)
+            self.send(text, reply=not self.deleted)
 
     def fail(self, text: str, seconds: float = 3) -> None:
         self.flash(text, seconds)
         raise Abort()
 
     def target(self, usage: str, fields: str | None = None) -> dict:
-        if self.reply_message is not None:
+        args = self.args
+        if len(args) > 1:
+            user = self.vk.user(user_ref(args[1]), fields)
+        elif self.reply_message is not None:
             user = self.vk.user(self.reply_message["from_id"], fields)
         else:
-            args = self.args
-            user = self.vk.user(user_ref(args[1]), fields) if len(args) > 1 else None
+            user = None
         if user is None:
             self.fail(f"{ERROR} Необходимо ответить на сообщение пользователя или указать на него ссылку: {usage}")
         return user
 
 
 def user_ref(text: str) -> str:
-    link = re.search(r"vk\.com/([A-Za-z0-9_.]+)", text)
+    link = re.search(r"vk\.(?:com|ru)/([A-Za-z0-9_.]+)", text)
     if link:
         return link.group(1)
     mention = re.search(r"\[id(\d+)\|", text)
     if mention:
         return mention.group(1)
     return text.lstrip("@")
+
+
+# так текст увидит VK после отправки: сущности раскрыты, <br> — перевод строки, невидимые символы (Cf) выброшены;
+# иначе «&#47;trust» прошёл бы проверку и вернулся через long poll командой владельца
+def as_shown(text: str | None) -> str:
+    shown = text or ""
+    for _ in range(5):
+        decoded = html.unescape(re.sub(r"<br\s*/?>", "\n", shown, flags=re.IGNORECASE))
+        if decoded == shown:
+            break
+        shown = decoded
+    return "".join(ch for ch in shown if unicodedata.category(ch) != "Cf")
 
 
 def mention(user: dict) -> str:

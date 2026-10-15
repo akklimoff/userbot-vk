@@ -1,6 +1,10 @@
+import re
+
 from userbot.context import ERROR, INVALID, SUCCESS, Access, Command, Context
 
 ASSOC = "assoc"
+# только слово с необязательным префиксом: эмодзи-ассоциация совпала бы с началом ответов бота и заглушила их
+ALIAS = re.compile(r"[/!+\-]?\w+")
 
 
 def list_assoc(ctx: Context) -> None:
@@ -20,9 +24,14 @@ def set_assoc(ctx: Context) -> None:
         ctx.fail(f"{INVALID} Правильное использование: /assoc_set [команда] [ассоциация]")
     command, alias = args[1].lower(), args[2].lower()
     names = {name for c in ctx.commands for name in c.names}
-    if command not in names:
+    target = next((c for c in ctx.commands if command in c.names), None)
+    if target is None:
         ctx.fail(f"{ERROR} Такой команды нет, учтите, что необходимо писать команду полностью.\n"
                  f"👉🏻 Например: /ban")
+    if target.access > ctx.access:
+        ctx.fail(f"{ERROR} Недостаточно прав, чтобы назначать ассоциации этой команде.")
+    if not ALIAS.fullmatch(alias):
+        ctx.fail(f"{INVALID} Ассоциация — одно слово из букв и цифр, можно с /, !, + или - в начале.")
     if alias in names:
         ctx.fail(f"{ERROR} `{alias}` уже является командой!")
     if not ctx.store.put_new(ASSOC, alias, command):

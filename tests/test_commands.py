@@ -52,7 +52,8 @@ def test_help_depends_on_access():
     trusted = help_text(COMMANDS, Access.TRUSTED)
     full = help_text(COMMANDS, Access.OWNER)
     assert "/ban" not in public and "/ban" in trusted
-    assert "/trust" not in trusted and "/trust" in full
+    assert "/trust" not in public and trusted == full
+    assert "[id" not in full and "http" not in full
     assert not any(name in full for name in ("/tc", "/st,", "/groups"))
 
 

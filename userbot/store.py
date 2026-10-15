@@ -3,6 +3,7 @@ import json
 import logging
 import os
 import threading
+import time
 from typing import Any
 
 log = logging.getLogger("userbot-vk")
@@ -67,8 +68,8 @@ class Store:
             raise ValueError("ожидался JSON-объект")
         except FileNotFoundError:
             return {}
-        except Exception:
-            broken = f"{self._path}.broken"
+        except (ValueError, UnicodeDecodeError):
+            broken = f"{self._path}.broken-{int(time.time())}"
             os.replace(self._path, broken)
             log.exception("%s не читается, сохранён как %s, начинаю с пустых настроек", self._path, broken)
             return {}

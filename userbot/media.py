@@ -4,19 +4,29 @@ import shutil
 import subprocess
 import textwrap
 import threading
+import time
 from contextlib import contextmanager
 from urllib.parse import urlparse
 
 import requests
 from PIL import Image, ImageDraw, ImageFont, ImageOps
 
-DOWNLOAD_TIMEOUT = 30
+DOWNLOAD_TIMEOUT = 15
+DOWNLOAD_DEADLINE = 60
 MAX_DOWNLOAD_BYTES = 50 * 1024 * 1024
+MAX_PIXELS = 40_000_000
+IMAGE_FORMATS = ("JPEG", "PNG", "WEBP", "GIF")
 TOOL_TIMEOUT = 120
 FONT_SIZE = 24
 HEAVY_JOBS = 2
 MAX_RESCALE_SIDE = 1024
 FONT_CANDIDATES = ("DejaVuSans.ttf", "/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf", "Arial Unicode.ttf")
+
+# внешним программам не передаём окружение с VK_TOKEN: уязвимость чтения файлов в них не должна раскрыть токен
+TOOL_ENV = {"PATH": os.environ.get("PATH", "/usr/local/bin:/usr/bin:/bin"), "HOME": "/tmp",
+            "MAGICK_THREAD_LIMIT": "1", "MAGICK_MEMORY_LIMIT": "256MiB", "MAGICK_AREA_LIMIT": "64MP"}
+# ffmpeg читает только локальный файл: плейлисты (HLS, concat) не должны тянуть что-то из сети или с диска
+FFMPEG = ["ffmpeg", "-nostdin", "-y", "-loglevel", "error", "-protocol_whitelist", "file"]
 
 VOICE_EFFECTS = {
     "1": "chorus=0.5:0.9:50|60|40:0.4|0.32|0.3:0.25|0.4|0.3:2|2.3|1.3,vibrato=f=15",
@@ -50,7 +60,9 @@ def heavy_slot():
 
 def open_image(path: str) -> Image.Image:
     try:
-        image = Image.open(path)
+        image = Image.open(path, formats=IMAGE_FORMATS)
+        if image.width * image.height > MAX_PIXELS:
+            raise MediaError("картинка слишком большая")
         image.load()
     except (OSError, Image.DecompressionBombError) as e:
         raise MediaError(f"не удалось открыть картинку: {e}") from e
@@ -63,7 +75,10 @@ def local_name(url: str, default_suffix: str) -> str:
 
 
 def download(url: str, directory: str, default_suffix: str) -> str:
+    if urlparse(url).scheme != "https":
+        raise MediaError("файл доступен не по https")
     path = os.path.join(directory, local_name(url, default_suffix))
+    deadline = time.monotonic() + DOWNLOAD_DEADLINE
     try:
         with requests.get(url, stream=True, timeout=DOWNLOAD_TIMEOUT) as response:
             response.raise_for_status()
@@ -73,6 +88,8 @@ def download(url: str, directory: str, default_suffix: str) -> str:
                     size += len(chunk)
                     if size > MAX_DOWNLOAD_BYTES:
                         raise MediaError("файл больше 50 МБ")
+                    if time.monotonic() > deadline:
+                        raise MediaError("файл качается слишком долго")
                     f.write(chunk)
     except requests.RequestException as e:
         raise MediaError(f"не удалось скачать файл: {e}") from e
@@ -81,25 +98,28 @@ def download(url: str, directory: str, default_suffix: str) -> str:
 
 def run_tool(args: list[str]) -> None:
     try:
-        subprocess.run(args, check=True, capture_output=True, timeout=TOOL_TIMEOUT)
+        subprocess.run(args, check=True, capture_output=True, timeout=TOOL_TIMEOUT, env=TOOL_ENV)
     except (OSError, subprocess.SubprocessError) as e:
         raise MediaError(f"{args[0]} не отработал: {e}") from e
 
 
 def apply_voice_effect(source: str, target: str, effect: str) -> None:
-    run_tool(["ffmpeg", "-y", "-loglevel", "error", "-i", source, "-af", VOICE_EFFECTS[effect], target])
+    run_tool([*FFMPEG, "-i", source, "-af", VOICE_EFFECTS[effect], target])
 
 
 def song_to_voice(source: str, target: str) -> None:
-    run_tool(["ffmpeg", "-y", "-loglevel", "error", "-i", source,
-              "-acodec", "pcm_s32le", "-ar", "44100", "-ac", "1", "-b:a", "256k", target])
+    run_tool([*FFMPEG, "-i", source, "-acodec", "pcm_s32le", "-ar", "44100", "-ac", "1", "-b:a", "256k", target])
 
 
+# ImageMagick получает только PNG, пересобранный Pillow: его декодеры SVG/MVG/MSL до чужого файла не доходят
 def liquid_rescale(source: str, target: str, percent: int) -> None:
+    clean = os.path.join(os.path.dirname(target), "clean.png")
+    image = open_image(source)
+    image.thumbnail((MAX_RESCALE_SIDE, MAX_RESCALE_SIDE))
+    image.save(clean, format="PNG")
     # в Debian с ImageMagick 7 есть только magick, в старых сборках — только convert
     binary = "magick" if shutil.which("magick") else "convert"
-    run_tool([binary, source, "-resize", f"{MAX_RESCALE_SIDE}x{MAX_RESCALE_SIDE}>",
-              "-liquid-rescale", f"{percent}x{percent}%", f"png:{target}"])
+    run_tool([binary, f"png:{clean}", "-liquid-rescale", f"{percent}x{percent}%", f"png:{target}"])
 
 
 def negate(source: str, target: str) -> None:

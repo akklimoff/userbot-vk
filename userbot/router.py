@@ -44,9 +44,19 @@ class Router:
             log.exception("Команда %s в %s упала", command.names[0], message["peer_id"])
             self._report(ctx, f"{ERROR} Не удалось выполнить команду.")
 
-    def wants(self, text: str, author: int | None) -> bool:
+    def privileged(self, author: int | None) -> bool:
+        return author == self._owner_id or author in self._store.get(TRUSTED_USERS, [])
+
+    def wants(self, text: str, author: int | None, peer_id: int) -> bool:
+        if author in self._store.get(IGNORED, []):
+            return True
+        if author in self._store.get(BANNED, []):
+            return False
+        if not self.privileged(author) and (peer_id in self._store.get(BANNED_PEERS, [])
+                                            or self._store.get(DISABLED, False)):
+            return False
         words = text.split()
-        return author in self._store.get(IGNORED, []) or bool(words) and self.command_for(words[0].lower()) is not None
+        return bool(words) and self.command_for(words[0].lower()) is not None
 
     @staticmethod
     def _report(ctx: Context, text: str) -> None:
@@ -62,7 +72,9 @@ class Router:
 
     def _accepts(self, message: dict) -> bool:
         author = message["from_id"]
-        privileged = author == self._owner_id or author in self._store.get(TRUSTED_USERS, [])
+        if author == self._owner_id and self._vk.sent_by_bot(message.get("random_id")):
+            return False
+        privileged = self.privileged(author)
         if author in self._store.get(IGNORED, []):
             self._vk.delete([message["id"]], False)
             return False

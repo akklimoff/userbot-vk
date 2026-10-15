@@ -6,9 +6,17 @@ services:
     env_file: .env
     volumes:
       - state:/app/state
+    tmpfs:
+      - /tmp:size=200m,mode=1777
+    read_only: true
+    cap_drop: [ALL]
+    security_opt:
+      - no-new-privileges:true
+    pids_limit: 128
+    cpus: 1.5
+    mem_limit: 512m
     restart: unless-stopped
     init: true
-    mem_limit: 512m
     logging:
       driver: json-file
       options:

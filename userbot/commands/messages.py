@@ -46,7 +46,21 @@ def delete_messages(ctx: Context) -> None:
             ctx.sleep(random.uniform(0.25, 0.75))
         ids.append(message["id"])
     if ids:
+        delete_each_on_failure(ctx, ids)
+
+
+# служебное сообщение в пачке (приглашение, закреп) роняет удаление у всех целиком — тогда удаляем по одному
+def delete_each_on_failure(ctx: Context, ids: list[int]) -> None:
+    try:
         ctx.vk.delete(ids, ctx.for_all)
+        return
+    except Exception:
+        log.info("Пачку из %d сообщений в %s удалить не вышло, удаляю по одному", len(ids), ctx.peer_id)
+    for message_id in ids:
+        try:
+            ctx.vk.delete([message_id], ctx.for_all)
+        except Exception:
+            log.warning("Не удалось удалить сообщение %s в %s", message_id, ctx.peer_id)
 
 
 def own_media(ctx: Context) -> dict | None:
@@ -71,9 +85,8 @@ def invisible(ctx: Context) -> None:
                  f"15 минут, 1 час, 5 часов, 1 день.", seconds=5)
     text = ctx.rest(2 if ttl else 1)
     attachments = reattach_ids(ctx.message)
-    forward = ",".join(str(m["id"]) for m in ctx.message.get("fwd_messages") or [] if m.get("id"))
     media = own_media(ctx)
-    if not (text or attachments or forward or media):
+    if not (text or attachments or media):
         ctx.fail(f"{ERROR} Необходимо написать сообщение или ответить на стикер / голосовое сообщение.", seconds=1)
     if ctx.is_command_like(text):
         ctx.fail(COMMAND_LIKE)
@@ -83,8 +96,7 @@ def invisible(ctx: Context) -> None:
         resend_own_media(ctx, media, ttl)
         return
     reply = ctx.reply_message
-    ctx.post(text or None, attachment=attachments or None, forward=forward or None, expire_ttl=ttl,
-             reply_to=reply["id"] if reply else None)
+    ctx.post(text or None, attachment=attachments or None, expire_ttl=ttl, reply_to=reply["id"] if reply else None)
 
 
 def repeat(ctx: Context) -> None:

@@ -6,15 +6,20 @@ CHAT = 2_000_000_001
 class FakeVk:
     def __init__(self, users=None, history=None, privacy=None):
         self.me_id = OWNER
-        self.users = {OWNER: user(OWNER), STRANGER: user(STRANGER), **(users or {})}
+        self.known = {OWNER: user(OWNER), STRANGER: user(STRANGER), **(users or {})}
         self._history = history or []
         self.privacy = privacy or {}
         self.privacy_values = {}
         self.sent, self.edited, self.deleted, self.uploads = [], [], [], []
+        self.own_random_ids = set()
 
     def send(self, peer_id, text=None, **params):
         self.sent.append({"peer_id": peer_id, "text": text, **{k: v for k, v in params.items() if v is not None}})
+        self.own_random_ids.add(10_000 + len(self.sent))
         return len(self.sent)
+
+    def sent_by_bot(self, random_id):
+        return bool(random_id) and random_id in self.own_random_ids
 
     def edit(self, peer_id, message_id, text):
         self.edited.append((peer_id, message_id, text))
@@ -26,8 +31,15 @@ class FakeVk:
         return self._history
 
     def user(self, user_id, fields=None):
-        key = int(user_id) if str(user_id).isdigit() else user_id
-        return self.users.get(key)
+        found = self.users_by_ids([user_id])
+        return found[0] if found else None
+
+    def users(self, user_ids, fields=None):
+        return self.users_by_ids(user_ids)
+
+    def users_by_ids(self, user_ids):
+        keys = [int(u) if str(u).isdigit() else u for u in user_ids]
+        return [self.known[k] for k in keys if k in self.known]
 
     def privacy_value(self, key):
         return self.privacy_values.get(key) or {"owners": {"allowed": list(self.privacy.get(key, []))}}

@@ -19,7 +19,7 @@ def first_attachment(message: dict) -> dict | None:
 
 def source_attachment(message: dict) -> dict | None:
     reply = message.get("reply_message")
-    return first_attachment(reply) if reply else first_attachment(message)
+    return (first_attachment(reply) if reply else None) or first_attachment(message)
 
 
 def largest_photo_url(photo: dict) -> str:

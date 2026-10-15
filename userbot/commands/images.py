@@ -8,6 +8,7 @@ from userbot.context import ERROR, INVALID, Command, Context
 
 NEED_IMAGE = f"{ERROR} Необходимо ответить на сообщение с фотографией / стикером, либо прикрепить фотографию."
 DIST_USAGE = f"{INVALID} Правильное использование: /d [степень от 1 до 10]"
+MAX_CAPTION = 200
 
 
 def dist_percent(args: list[str]) -> int | None:
@@ -52,6 +53,8 @@ def caption(ctx: Context) -> None:
     text = ctx.rest(1)
     if source is None or source[1] != "photo" or not text:
         ctx.fail(f"{ERROR} Необходимо прикрепить фотографию и написать текст: /text [текст]")
+    if len(text) > MAX_CAPTION:
+        ctx.fail(f"{INVALID} Подпись длиннее {MAX_CAPTION} символов.")
     transform(ctx, source, lambda src, dst: media.add_caption(src, dst, text))
 
 
