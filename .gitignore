@@ -1,9 +1,9 @@
-.gitignore
-.idea
-venv
-config_local.py
-files
-__pycache__
-*.pyc
-commands/*.pyc
+.idea/
+.venv/
+__pycache__/
+.pytest_cache/
+.env
+state/
+.omc/
 data.json
+files/
