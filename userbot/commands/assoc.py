@@ -48,7 +48,8 @@ def delete_assoc(ctx: Context) -> None:
 
 
 COMMANDS = [
-    Command(("/assoc",), list_assoc, "список ассоциаций", Access.TRUSTED, "📖"),
-    Command(("/assoc_set",), set_assoc, "своё слово для команды", Access.TRUSTED, "🏷", "[команда] [слово]"),
-    Command(("/assoc_del",), delete_assoc, "удалить ассоциацию", Access.TRUSTED, "✂️", "[слово]"),
+    Command(("/асс", "/слова", "/assoc"), list_assoc, "список ассоциаций", Access.TRUSTED, "📖"),
+    Command(("/асс+", "/слово", "/assoc_set"), set_assoc, "своё слово для команды",
+            Access.TRUSTED, "🏷", "[команда] [слово]"),
+    Command(("/асс-", "/неслово", "/assoc_del"), delete_assoc, "удалить ассоциацию", Access.TRUSTED, "✂️", "[слово]"),
 ]

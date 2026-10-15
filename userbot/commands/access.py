@@ -92,15 +92,17 @@ def list_trusted(ctx: Context) -> None:
 
 
 COMMANDS = [
-    Command(("/ban",), ban, "бот перестанет отвечать человеку", Access.TRUSTED, "🚫", "[кто]"),
-    Command(("/unban",), unban, "снять блокировку", Access.TRUSTED, "🌸", "[кто]"),
-    Command(("/ban_chat",), ban_chat, "в этой беседе бот слушает только владельца и доверенных",
+    Command(("/блок", "/ban"), ban, "бот перестанет отвечать человеку", Access.TRUSTED, "🚫", "[кто]"),
+    Command(("/разблок", "/unban"), unban, "снять блокировку", Access.TRUSTED, "🌸", "[кто]"),
+    Command(("/блокчат", "/ban_chat"), ban_chat, "в этой беседе бот слушает только владельца и доверенных",
             Access.TRUSTED, "🔒"),
-    Command(("/unban_chat",), unban_chat, "вернуть бота в беседу для всех", Access.TRUSTED, "🔓"),
-    Command(("/ignore",), ignore, "сообщения человека будут исчезать у владельца", Access.TRUSTED, "🙈", "[кто]"),
-    Command(("/unignore",), unignore, "убрать из игнора", Access.TRUSTED, "🙉", "[кто]"),
-    Command(("/disable",), disable, "выключить или включить команды для всех", Access.TRUSTED, "💤"),
-    Command(("/trust",), trust, "сделать доверенным: ему доступны команды владельца", Access.OWNER, "💍", "[кто]"),
-    Command(("/untrust",), untrust, "убрать из доверенных", Access.OWNER, "💔", "[кто]"),
-    Command(("/trusted",), list_trusted, "список доверенных", Access.OWNER, "👯‍♀️"),
+    Command(("/разблокчат", "/unban_chat"), unban_chat, "вернуть бота в беседу для всех", Access.TRUSTED, "🔓"),
+    Command(("/игнор", "/ignore"), ignore, "сообщения человека будут исчезать у владельца",
+            Access.TRUSTED, "🙈", "[кто]"),
+    Command(("/разигнор", "/unignore"), unignore, "убрать из игнора", Access.TRUSTED, "🙉", "[кто]"),
+    Command(("/выкл", "/пауза", "/disable"), disable, "выключить или включить команды для всех", Access.TRUSTED, "💤"),
+    Command(("/довер", "/trust"), trust, "сделать доверенным: ему доступны команды владельца",
+            Access.OWNER, "💍", "[кто]"),
+    Command(("/недовер", "/untrust"), untrust, "убрать из доверенных", Access.OWNER, "💔", "[кто]"),
+    Command(("/доверенные", "/trusted"), list_trusted, "список доверенных", Access.OWNER, "👯‍♀️"),
 ]

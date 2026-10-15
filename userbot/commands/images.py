@@ -59,7 +59,7 @@ def caption(ctx: Context) -> None:
 
 
 COMMANDS = [
-    Command(("/d", "/dist"), dist, "жмых фото или стикера", icon="🫧", usage="[1-10]"),
-    Command(("/n", "/negative"), negative, "негатив фото или стикера", icon="🪞"),
-    Command(("/t", "/text"), caption, "подпись к фото, до 200 символов", icon="💌", usage="[текст]"),
+    Command(("/ж", "/жмых", "/d", "/dist"), dist, "жмых фото или стикера", icon="🫧", usage="[1-10]"),
+    Command(("/нг", "/негатив", "/n", "/negative"), negative, "негатив фото или стикера", icon="🪞"),
+    Command(("/т", "/текст", "/t", "/text"), caption, "подпись к фото, до 200 символов", icon="💌", usage="[текст]"),
 ]

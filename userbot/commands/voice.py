@@ -103,11 +103,14 @@ def list_saved(ctx: Context) -> None:
 
 
 COMMANDS = [
-    Command(("/au", "/audio"), distort, "жмых голосового (ответом)", icon="🎤", usage="[1-4]"),
-    Command(("/ma", "/music_audio"), song, "превратить песню в голосовое", icon="🎶"),
-    Command(("/copy",), copy, "скопировать чужое голосовое (ответом)", Access.TRUSTED, "🎙"),
-    Command(("/sa", "/save_audio"), save, "сохранить голосовое (ответом), без названия — под номером", Access.TRUSTED, "💾", "[название]"),
-    Command(("/ag", "/aget"), send_saved, "отправить сохранённое голосовое", Access.TRUSTED, "💿", "[название]"),
-    Command(("/ad", "/adelete"), delete_saved, "удалить сохранённое голосовое", Access.TRUSTED, "🗑", "[название]"),
-    Command(("/alist",), list_saved, "список сохранённых голосовых", Access.TRUSTED, "📒"),
+    Command(("/жгс", "/жмыхгс", "/au", "/audio"), distort, "жмых голосового (ответом)", icon="🎤", usage="[1-4]"),
+    Command(("/пгс", "/песня", "/ma", "/music_audio"), song, "превратить песню в голосовое", icon="🎶"),
+    Command(("/кгс", "/копия", "/copy"), copy, "скопировать чужое голосовое (ответом)", Access.TRUSTED, "🎙"),
+    Command(("/сгс", "/сохр", "/sa", "/save_audio"), save, "сохранить голосовое (ответом), без названия — под номером",
+            Access.TRUSTED, "💾", "[название]"),
+    Command(("/гс", "/голос", "/ag", "/aget"), send_saved, "отправить сохранённое голосовое",
+            Access.TRUSTED, "💿", "[название]"),
+    Command(("/угс", "/удгс", "/ad", "/adelete"), delete_saved, "удалить сохранённое голосовое",
+            Access.TRUSTED, "🗑", "[название]"),
+    Command(("/гсы", "/моигс", "/alist"), list_saved, "список сохранённых голосовых", Access.TRUSTED, "📒"),
 ]

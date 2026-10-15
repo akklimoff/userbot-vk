@@ -8,6 +8,7 @@ from userbot.commands.messages import parse_ttl
 from userbot.context import Access
 from userbot.context import user_ref
 from userbot.router import Router
+from userbot.safety import BARE_WORDS, COMMAND_WORDS, DELETE_WORD, looks_like_command
 
 
 def test_ban_and_unban_round_trip(router, vk, store):
@@ -62,6 +63,22 @@ def test_command_names_are_unique():
     assert len(names) == len(set(names))
 
 
+@pytest.mark.parametrize("name", [name for c in COMMANDS for name in c.names if not name.startswith("/")])
+def test_prefixless_names_are_not_vk_bot_commands(name):
+    assert not looks_like_command(f"{name} текст")
+
+
+# /ban был до этой проверки: у vk-bot «/ban» — тоже бан, поведение совпадает
+@pytest.mark.parametrize("name", [name for c in COMMANDS for name in c.names if name != "/ban"])
+def test_names_are_not_vk_bot_command_words(name):
+    assert name.lstrip("!/-+").rstrip(",.:!") not in COMMAND_WORDS | BARE_WORDS | {DELETE_WORD}
+
+
+def test_russian_names_run_commands(router, vk):
+    router.handle(message("/повтор 2 ура"))
+    assert [m["text"] for m in vk.sent] == ["ура"] * 2
+
+
 @pytest.mark.parametrize("word, ttl", [("15s", 15), ("5м", 300), ("1h", 3600), ("5ч", 18000), ("1d", 86400), ("1д", 86400), ("2x", None),
                                         ("текст", None), ("10", None)])
 def test_parse_ttl(word, ttl):
@@ -94,6 +111,32 @@ def test_repeat_sends_text_n_times(router, vk):
 
 def test_repeat_never_sends_command_like_text(router, vk):
     router.handle(message("/repeat 3 /ban 5"))
+    assert in_peer(vk, CHAT) == []
+
+
+def test_say_sends_text_once_keeping_lines(router, vk):
+    router.handle(message("/скажи привет\nкак дела"))
+    assert [m["text"] for m in in_peer(vk, CHAT)] == ["привет\nкак дела"]
+
+
+def test_say_answers_the_replied_message(router, vk):
+    router.handle(message("/эхо ура", reply_message={"id": 5, "from_id": STRANGER}))
+    assert in_peer(vk, CHAT)[0]["reply_to"] == 5
+
+
+def test_say_needs_text(router, vk):
+    router.handle(message("/скажи"))
+    assert in_peer(vk, CHAT) == []
+    assert "/скажи текст" in in_peer(vk, OWNER)[0]["text"]
+
+
+def test_say_never_sends_command_like_text(router, vk):
+    router.handle(message("/скажи бан 5"))
+    assert in_peer(vk, CHAT) == []
+
+
+def test_say_is_not_for_strangers(router, vk):
+    router.handle(message("/скажи ура", from_id=STRANGER))
     assert in_peer(vk, CHAT) == []
 
 

@@ -33,6 +33,6 @@ def show_help(ctx: Context) -> None:
 
 
 COMMANDS = [
-    Command(("/uid", "/userid"), user_id, "узнать ID человека", icon="🪪", usage="[кто]"),
-    Command(("/911", "/112", "/help"), show_help, "этот список", icon="🧚‍♀️"),
+    Command(("/ид", "/айди", "/uid", "/userid"), user_id, "узнать ID человека", icon="🪪", usage="[кто]"),
+    Command(("/хелп", "/команды", "/help", "/911", "/112"), show_help, "этот список", icon="🧚‍♀️"),
 ]

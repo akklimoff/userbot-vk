@@ -116,9 +116,23 @@ def repeat(ctx: Context) -> None:
         ctx.sleep(random.uniform(0, 2.5))
 
 
+def say(ctx: Context) -> None:
+    text = ctx.rest(1)
+    if not text:
+        ctx.fail(f"{INVALID} Так: /скажи текст")
+    if ctx.is_command_like(text):
+        ctx.fail(COMMAND_LIKE)
+    ctx.delete()
+    reply = ctx.reply_message
+    ctx.post(text, reply_to=reply["id"] if reply else None)
+
+
 COMMANDS = [
-    Command(("/del",), delete_messages, "удалить последние сообщения владельца; со словом — сначала стереть текст",
-            Access.TRUSTED, "🧹", "[сколько] [слово]"),
-    Command(("/i", "/и"), invisible, "исчезающее сообщение", Access.TRUSTED, "🪄", "[15s|1m|5m|15m|1h|5h|1d] [текст]"),
-    Command(("/repeat",), repeat, "повторить сообщение", Access.TRUSTED, "💋", "[1-20] [текст]"),
+    Command(("/дд", "/удалить", "/del"), delete_messages,
+            "удалить последние сообщения владельца; со словом — сначала стереть текст", Access.TRUSTED, "🧹", "[сколько] [слово]"),
+    Command(("/и", "/исчезни", "/i"), invisible, "исчезающее сообщение",
+            Access.TRUSTED, "🪄", "[15s|1m|5m|15m|1h|5h|1d] [текст]"),
+    Command(("/пп", "/повтор", "/repeat"), repeat, "повторить сообщение несколько раз", Access.TRUSTED, "💋",
+            "[1-20] [текст]"),
+    Command(("/скажи", "/эхо", "/say"), say, "отправить текст от лица владельца", Access.TRUSTED, "🗣", "[текст]"),
 ]
