@@ -71,11 +71,11 @@ def test_trusted_command_survives_failed_deletion(router, vk):
     assert [m["text"] for m in vk.sent if m["text"] == "привет"] == ["привет", "привет"]
 
 
-def test_trusted_help_shows_shared_section(router, vk):
+def test_trusted_help_lists_every_command(router, vk):
     trust(router)
-    router.handle(message("/help", from_id=TRUSTED))
+    router.handle(message("/911", from_id=TRUSTED))
     text = vk.sent[-1]["text"]
-    assert "/ban" in text and "/trust" not in text
+    assert all(name in text for c in COMMANDS for name in c.names)
 
 
 def test_trusted_list(router, vk):
