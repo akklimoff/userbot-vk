@@ -11,22 +11,27 @@ NEED_VOICE_OR_CIRCLE = f"{ERROR} Нужно ответить на голосов
 log = logging.getLogger("userbot-vk")
 
 
+# без ответа голосовое или кружочек можно переслать вместе с командой
+def source(ctx: Context) -> dict:
+    return ctx.reply_message or ctx.message
+
+
 def reupload_voice(ctx: Context, url: str) -> str:
     with tempfile.TemporaryDirectory() as tmp:
         return ctx.vk.upload_voice(media.download(url, tmp, ".ogg"), ctx.peer_id)
 
 
 def require_voice_or_circle(ctx: Context) -> None:
-    if voice_url(ctx.reply_message) is None and circle_id(ctx.reply_message) is None:
+    if voice_url(source(ctx)) is None and circle_id(source(ctx)) is None:
         ctx.fail(NEED_VOICE_OR_CIRCLE)
 
 
 # VK не даёт загрузить кружочек, поэтому его копия — ссылка на оригинал, а голосовое загружается заново
 def copy_of_reply(ctx: Context) -> tuple[str, bool]:
-    url = voice_url(ctx.reply_message)
+    url = voice_url(source(ctx))
     if url is not None:
         return reupload_voice(ctx, url), False
-    circle = circle_id(ctx.reply_message)
+    circle = circle_id(source(ctx))
     if circle is None:
         ctx.fail(NEED_VOICE_OR_CIRCLE)
     return circle, True

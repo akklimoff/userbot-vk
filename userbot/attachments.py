@@ -33,13 +33,23 @@ def first_attachment(message: dict) -> dict | None:
     return attachments[0] if attachments else None
 
 
+# голосовое или кружочек часто пересылают, и команда отвечает на пересылку, а не на оригинал
+def media_of(message: dict | None) -> dict | None:
+    if not message:
+        return None
+    attachment = first_attachment(message)
+    if attachment is not None:
+        return attachment
+    return next(filter(None, map(media_of, message.get("fwd_messages") or [])), None)
+
+
 def circle_id(message: dict | None) -> str | None:
-    attachment = first_attachment(message or {})
+    attachment = media_of(message)
     video = attachment.get("video") if attachment else None
     return reattach_id(attachment) if video and is_circle(video) else None
 
 
 def voice_url(message: dict | None) -> str | None:
-    attachment = first_attachment(message or {})
+    attachment = media_of(message)
     voice = attachment.get("audio_message") if attachment else None
     return voice["link_ogg"] if voice else None

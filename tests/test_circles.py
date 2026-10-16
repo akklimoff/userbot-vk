@@ -53,3 +53,18 @@ def test_saved_list_marks_circles(router, vk, store):
     router.handle(message("/гсы"))
     text = in_peer(vk, OWNER)[0]["text"]
     assert "🎀 голос" in text and "📹 круг" in text
+
+
+def test_circle_inside_replied_forward_is_saved(router, store):
+    forward = {"id": 5, "from_id": OWNER, "attachments": [], "fwd_messages": [{"from_id": STRANGER,
+                                                                             "attachments": [CIRCLE]}]}
+    router.handle(message("/сгс тест1", reply_message=forward))
+    assert store.get("saved_audio") == {"тест1": CIRCLE_ID}
+
+
+def test_voice_forwarded_with_the_command_is_copied(router, vk, monkeypatch, tmp_path):
+    from userbot import media
+    monkeypatch.setattr(media, "download", lambda url, d, s: str(tmp_path / "v.ogg"))
+    voice = {"type": "audio_message", "audio_message": {"link_ogg": "https://x/v.ogg"}}
+    router.handle(message("/кгс", fwd_messages=[{"from_id": STRANGER, "attachments": [voice]}]))
+    assert in_peer(vk, CHAT) == [{"peer_id": CHAT, "text": None, "attachment": "audio_message1_10"}]
