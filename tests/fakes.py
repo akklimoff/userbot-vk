@@ -10,6 +10,8 @@ class FakeVk:
         self._history = history or []
         self.sent, self.edited, self.deleted, self.uploads = [], [], [], []
         self.own_random_ids = set()
+        self.incoming, self.outgoing, self.dead = [], [], []
+        self.added, self.removed, self.online = [], [], 0
 
     def send(self, peer_id, text=None, **params):
         self.sent.append({"peer_id": peer_id, "text": text, **{k: v for k, v in params.items() if v is not None}})
@@ -42,6 +44,25 @@ class FakeVk:
     def upload_voice(self, path, peer_id):
         self.uploads.append(("voice", path))
         return "audio_message1_10"
+
+    def friend_requests(self, outgoing):
+        return list(self.outgoing if outgoing else self.incoming)
+
+    def add_friend(self, user_id):
+        self.added.append(user_id)
+        self.incoming.remove(user_id)
+
+    def delete_friend(self, user_id):
+        self.removed.append(user_id)
+        for pending in (self.outgoing, self.dead):
+            if user_id in pending:
+                pending.remove(user_id)
+
+    def dead_friends(self):
+        return list(self.dead)
+
+    def set_online(self):
+        self.online += 1
 
 
 def user(user_id):

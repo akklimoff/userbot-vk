@@ -7,6 +7,7 @@ from collections import defaultdict, deque
 from collections.abc import Callable
 from concurrent.futures import Executor, ThreadPoolExecutor
 
+from userbot.automation import Autopilot
 from userbot.commands import COMMANDS
 from userbot.config import Settings
 from userbot.router import Router
@@ -170,6 +171,7 @@ def serve_account(number: int, token: str, settings: Settings, accounts: dict[in
         return
     store = Store(state_path(settings.state_dir, vk.me_id, number == 1))
     router = Router(vk, store, COMMANDS, vk.me_id, own_accounts=accounts)
+    threading.Thread(target=Autopilot(vk, store).run_forever, name=f"autopilot-{number}", daemon=True).start()
     log.info("userbot-vk запущен, id=%s", vk.me_id)
     with ThreadPoolExecutor(max_workers=settings.workers, thread_name_prefix=f"account-{number}") as pool:
         listen_forever(vk, Dispatcher(vk, router, pool, settings.log_messages))

@@ -2,6 +2,7 @@ import threading
 import time
 from collections import deque
 from collections.abc import Iterator
+from contextlib import contextmanager
 from dataclasses import dataclass
 
 import requests
@@ -18,6 +19,26 @@ TITLE_TTL_SECONDS = 3600
 REMEMBERED_SENT = 5000
 # vk_api по умолчанию ходит с v=5.92, где у кружочка нет video.type=video_message и его не отличить от обычного видео
 MESSAGES_API_VERSION = "5.131"
+MAX_FRIEND_REQUESTS = 1000
+FRIENDS_PAGE = 5000
+# слишком много запросов, флуд-контроль, ограничение аккаунта
+THROTTLE_CODES = frozenset({6, 9, 29})
+
+
+class Throttled(Exception):
+    """VK просит притормозить: продолжать — значит нарваться на ограничение аккаунта."""
+
+
+@contextmanager
+def throttle_aware():
+    try:
+        yield
+    except vk_api.Captcha as e:
+        raise Throttled("капча") from e
+    except vk_api.ApiError as e:
+        if e.code in THROTTLE_CODES:
+            raise Throttled(str(e)) from e
+        raise
 
 
 # vk_api не задаёт таймаут и держит общую блокировку на время запроса: одно зависшее соединение остановило бы бота
@@ -116,3 +137,29 @@ class VkClient:
         doc = self._upload.audio_message(path, peer_id=peer_id)["audio_message"]
         return attachment_id("audio_message", doc)
 
+    def friend_requests(self, outgoing: bool) -> list[int]:
+        with throttle_aware():
+            return self._api.friends.getRequests(out=int(outgoing), need_viewed=1,
+                                                 count=MAX_FRIEND_REQUESTS)["items"]
+
+    def add_friend(self, user_id: int) -> None:
+        with throttle_aware():
+            self._api.friends.add(user_id=user_id)
+
+    def delete_friend(self, user_id: int) -> None:
+        with throttle_aware():
+            self._api.friends.delete(user_id=user_id)
+
+    def dead_friends(self) -> list[int]:
+        dead, offset = [], 0
+        with throttle_aware():
+            while True:
+                page = self._api.friends.get(fields="deactivated", count=FRIENDS_PAGE, offset=offset)
+                dead += [friend["id"] for friend in page["items"] if friend.get("deactivated")]
+                offset += FRIENDS_PAGE
+                if offset >= page["count"]:
+                    return dead
+
+    def set_online(self) -> None:
+        with throttle_aware():
+            self._api.account.setOnline(voip=0)
