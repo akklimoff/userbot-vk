@@ -31,16 +31,16 @@ def test_owner_cannot_trust_self(router, store):
 
 def test_trusted_gets_report_in_dm_and_command_is_removed(router, store, vk):
     trust(router)
-    router.handle(message(f"/ban {TARGET}", from_id=TRUSTED, message_id=200))
-    assert store.get("banned") == [TARGET]
-    assert vk.sent[-1]["peer_id"] == TRUSTED and "заблокирован" in vk.sent[-1]["text"]
+    router.handle(message(f"/ignore {TARGET}", from_id=TRUSTED, message_id=200))
+    assert store.get("ignore") == [TARGET]
+    assert vk.sent[-1]["peer_id"] == TRUSTED and "в игноре" in vk.sent[-1]["text"]
     assert all(m["peer_id"] != CHAT for m in vk.sent)
     assert vk.deleted[-1] == ([200], True) and vk.edited == []
 
 
 def test_stranger_cannot_run_owner_commands(router, store):
-    router.handle(message(f"/ban {TARGET}", from_id=STRANGER))
-    assert store.get("banned") is None
+    router.handle(message(f"/ignore {TARGET}", from_id=STRANGER))
+    assert store.get("ignore") is None
 
 
 def test_trusted_cannot_manage_trust(router, store):
@@ -50,10 +50,9 @@ def test_trusted_cannot_manage_trust(router, store):
     assert store.get("trusted") == [TRUSTED]
 
 
-def test_trusted_bypasses_disable_and_banned_chat(router, store, vk):
+def test_trusted_bypasses_disable(router, store, vk):
     trust(router)
     store.toggle("disabled")
-    store.add_to("banned_peers", CHAT)
     router.handle(message("/uid 5", from_id=TRUSTED))
     router.handle(message("/uid 5", from_id=STRANGER))
     assert len(vk.sent) == 1

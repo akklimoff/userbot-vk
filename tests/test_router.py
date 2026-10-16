@@ -1,8 +1,8 @@
-from tests.fakes import CHAT, OWNER, STRANGER, message, texts
+from tests.fakes import CHAT, OWNER, STRANGER, message
 
 
 def test_owner_command_is_ignored_for_others(router, vk):
-    router.handle(message("/ban 5", from_id=STRANGER))
+    router.handle(message("/ignore 5", from_id=STRANGER))
     assert vk.sent == [] and vk.edited == []
 
 
@@ -24,31 +24,11 @@ def test_ignored_user_message_is_deleted_only_for_owner(router, vk, store):
     assert vk.sent == []
 
 
-def test_banned_user_gets_no_answer(router, vk, store):
-    store.add_to("banned", STRANGER)
-    router.handle(message("/help", from_id=STRANGER))
-    assert vk.sent == []
-
-
-def test_banned_chat_still_serves_owner(router, vk, store):
-    store.add_to("banned_peers", CHAT)
-    router.handle(message("/help", from_id=STRANGER))
-    assert vk.sent == []
-    router.handle(message("/help", from_id=OWNER))
-    assert len(vk.sent) == 1
-
-
 def test_disabled_bot_serves_only_owner(router, vk, store):
     store.toggle("disabled")
     router.handle(message("/help", from_id=STRANGER))
     router.handle(message("/help", from_id=OWNER))
     assert len(vk.sent) == 1
-
-
-def test_association_runs_target_command(router, vk, store):
-    store.put_new("assoc", "!id", "/uid")
-    router.handle(message("!ID 2", from_id=STRANGER, peer_id=STRANGER))
-    assert "ID пользователя: 2" in texts(vk)[0]
 
 
 def test_media_failure_is_reported(router, vk, monkeypatch):
@@ -58,8 +38,9 @@ def test_media_failure_is_reported(router, vk, monkeypatch):
         raise media.MediaError("нет сети")
 
     monkeypatch.setattr(media, "download", broken)
-    photo = {"type": "photo", "photo": {"sizes": [{"url": "https://x/a.jpg", "width": 1, "height": 1}]}}
-    router.handle(message("/n", from_id=STRANGER, peer_id=STRANGER, attachments=[photo]))
+    voice = {"type": "audio_message", "audio_message": {"link_ogg": "https://x/v.ogg"}}
+    router.handle(message("/au 1", from_id=STRANGER, peer_id=STRANGER, reply_message={"id": 5, "from_id": 9,
+                                                                                    "attachments": [voice]}))
     assert "Не удалось обработать файл" in vk.sent[0]["text"] and vk.sent[0]["peer_id"] == STRANGER
 
 
@@ -73,10 +54,8 @@ def test_unexpected_error_is_reported(router, vk, monkeypatch):
 
 
 def test_wants_only_commands_and_ignored_authors(router, store):
-    store.put_new("assoc", "ау", "/uid")
     store.add_to("ignore", 7)
     assert router.wants("/help", STRANGER, CHAT)
-    assert router.wants("Ау привет", STRANGER, CHAT)
     assert router.wants("что угодно", 7, CHAT)
     assert not router.wants("просто текст", STRANGER, CHAT)
     assert not router.wants("", STRANGER, CHAT)

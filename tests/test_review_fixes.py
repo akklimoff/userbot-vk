@@ -1,11 +1,9 @@
 import subprocess
 
 import pytest
-from PIL import Image
 
 from tests.fakes import OWNER, STRANGER, FakeVk, message, user
 from userbot import media
-from userbot.attachments import source_attachment
 from userbot.commands import COMMANDS
 from userbot.context import as_shown, user_ref
 from userbot.router import Router
@@ -46,41 +44,24 @@ def test_owner_message_sent_by_bot_is_ignored(router, vk, store):
     assert store.get("trusted") is None
 
 
-def test_trusted_cannot_alias_owner_commands(trusted, store):
-    trusted.handle(message("/assoc_set /trust ок", from_id=TRUSTED))
-    assert store.get("assoc") is None
-
-
-@pytest.mark.parametrize("alias", ["✅", "❗", "⚠️", "📖"])
-def test_emoji_aliases_are_rejected(router, store, alias):
-    router.handle(message(f"/assoc_set /help {alias}"))
-    assert store.get("assoc") is None
-
-
-def test_trusted_cannot_ban_or_ignore_other_trusted(trusted, store):
-    trusted.handle(message(f"/ban {OTHER_TRUSTED}", from_id=TRUSTED))
+def test_trusted_cannot_ignore_other_trusted(trusted, store):
     trusted.handle(message(f"/ignore {OTHER_TRUSTED}", from_id=TRUSTED))
-    assert store.get("banned") is None and store.get("ignore") is None
+    assert store.get("ignore") is None
 
 
-def test_owner_can_ban_trusted(trusted, store):
-    trusted.handle(message(f"/ban {OTHER_TRUSTED}"))
-    assert store.get("banned") == [OTHER_TRUSTED]
+def test_owner_can_ignore_trusted(trusted, store):
+    trusted.handle(message(f"/ignore {OTHER_TRUSTED}"))
+    assert store.get("ignore") == [OTHER_TRUSTED]
 
 
 def test_explicit_target_wins_over_reply(router, store):
-    router.handle(message("/ban 9", reply_message={"id": 5, "from_id": STRANGER}))
-    assert store.get("banned") == [9]
+    router.handle(message("/ignore 9", reply_message={"id": 5, "from_id": STRANGER}))
+    assert store.get("ignore") == [9]
 
 
 @pytest.mark.parametrize("text, ref", [("https://vk.ru/durov", "durov"), ("vk.com/id5", "id5")])
 def test_user_ref_links(text, ref):
     assert user_ref(text) == ref
-
-
-def test_own_attachment_used_when_reply_has_none():
-    photo = {"type": "photo", "photo": {}}
-    assert source_attachment({"attachments": [photo], "reply_message": {"attachments": []}}) == photo
 
 
 def test_failure_after_deletion_is_reported_as_new_message(router, vk, monkeypatch, tmp_path):
@@ -113,23 +94,9 @@ def test_del_falls_back_to_single_deletes(store):
     assert attempts[-4:] == [[99, 98, 97], [99], [98], [97]]
 
 
-def test_long_caption_is_rejected(router, vk):
-    photo = {"type": "photo", "photo": {"sizes": [{"url": "https://x/a.jpg", "width": 1, "height": 1}]}}
-    router.handle(message("/t " + "а" * 201, from_id=STRANGER, peer_id=STRANGER, attachments=[photo]))
-    assert "длиннее" in vk.sent[0]["text"]
-
-
 def test_download_requires_https(tmp_path):
     with pytest.raises(media.MediaError):
         media.download("http://example.com/a.png", str(tmp_path), ".png")
-
-
-def test_huge_images_are_refused(tmp_path, monkeypatch):
-    monkeypatch.setattr(media, "MAX_PIXELS", 100)
-    source = tmp_path / "a.png"
-    Image.new("RGB", (20, 20)).save(source)
-    with pytest.raises(media.MediaError):
-        media.negate(str(source), str(tmp_path / "b.png"))
 
 
 def test_tools_never_see_the_token(monkeypatch):
@@ -142,21 +109,6 @@ def test_tools_never_see_the_token(monkeypatch):
     monkeypatch.setattr(subprocess, "run", fake_run)
     media.run_tool(["ffmpeg"])
     assert "VK_TOKEN" not in seen and "secret" not in seen.values()
-
-
-def test_imagemagick_gets_only_clean_png(tmp_path, monkeypatch):
-    calls = []
-    monkeypatch.setattr(media, "run_tool", calls.append)
-    svg = tmp_path / "input.png"
-    svg.write_text('<svg xmlns="http://www.w3.org/2000/svg"><image href="file:///etc/passwd"/></svg>')
-    with pytest.raises(media.MediaError):
-        media.liquid_rescale(str(svg), str(tmp_path / "out.png"), 50)
-    assert calls == []
-    photo = tmp_path / "photo.jpg"
-    Image.new("RGB", (3000, 1000)).save(photo)
-    media.liquid_rescale(str(photo), str(tmp_path / "out.png"), 50)
-    assert calls[0][1] == f"png:{tmp_path / 'clean.png'}"
-    assert Image.open(tmp_path / "clean.png").size == (1024, 341)
 
 
 def test_ffmpeg_reads_only_local_files():

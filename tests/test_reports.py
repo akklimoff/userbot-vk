@@ -18,8 +18,8 @@ def trusted(router, store):
 
 
 def test_owner_success_leaves_nothing(router, vk, store):
-    router.handle(message("/ban 9"))
-    assert store.get("banned") == [9]
+    router.handle(message("/ignore 9"))
+    assert store.get("ignore") == [9]
     assert vk.sent == [] and vk.deleted == [([100], True)]
 
 
@@ -30,7 +30,7 @@ def test_owner_info_goes_to_saved_messages(router, vk):
 
 
 def test_owner_error_goes_to_saved_messages(router, vk):
-    router.handle(message("/ban"))
+    router.handle(message("/ignore"))
     assert in_peer(vk, CHAT) == [] and "о ком речь" in in_peer(vk, OWNER)[0]["text"]
 
 
@@ -46,8 +46,8 @@ def test_trusted_command_falls_back_to_deleting_for_owner(trusted, vk, store):
         vk.deleted.append((list(message_ids), for_all))
 
     vk.delete = delete
-    trusted.handle(message("/ban 9", from_id=TRUSTED))
-    assert store.get("banned") == [9]
+    trusted.handle(message("/ignore 9", from_id=TRUSTED))
+    assert store.get("ignore") == [9]
     assert vk.deleted == [([100], False)]
     assert [m["peer_id"] for m in vk.sent] == [TRUSTED]
 
@@ -90,8 +90,8 @@ def test_closed_dm_does_not_break_command(trusted, vk, store):
         raise RuntimeError("личка закрыта")
 
     vk.send = send
-    trusted.handle(message("/ban 9", from_id=TRUSTED))
-    assert store.get("banned") == [9] and vk.deleted == [([100], True)]
+    trusted.handle(message("/ignore 9", from_id=TRUSTED))
+    assert store.get("ignore") == [9] and vk.deleted == [([100], True)]
 
 
 def test_media_result_stays_in_chat_as_reply_to_source(router, vk, monkeypatch, tmp_path):

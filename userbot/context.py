@@ -159,12 +159,12 @@ class Context:
                 log.info("Не удалось стереть команду в %s", self.peer_id)
         self.delete()
 
-    def target(self, usage: str, fields: str | None = None) -> dict:
+    def target(self, usage: str) -> dict:
         args = self.args
         if len(args) > 1:
-            user = self.vk.user(user_ref(args[1]), fields)
+            user = self.vk.user(user_ref(args[1]))
         elif self.reply_message is not None:
-            user = self.vk.user(self.reply_message["from_id"], fields)
+            user = self.vk.user(self.reply_message["from_id"])
         else:
             user = None
         if user is None:

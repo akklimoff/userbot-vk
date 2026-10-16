@@ -88,13 +88,13 @@ class VkClient:
         return self._api.messages.getHistory(peer_id=peer_id, start_message_id=start_message_id,
                                              count=count)["items"]
 
-    def user(self, user_id: int | str, fields: str | None = None) -> dict | None:
-        users = self.users([user_id], fields)
+    def user(self, user_id: int | str) -> dict | None:
+        users = self.users([user_id])
         return users[0] if users else None
 
-    def users(self, user_ids: list[int | str], fields: str | None = None) -> list[dict]:
+    def users(self, user_ids: list[int | str]) -> list[dict]:
         try:
-            return self._api.users.get(user_ids=user_ids, **({"fields": fields} if fields else {}))
+            return self._api.users.get(user_ids=user_ids)
         except vk_api.ApiError:
             return []
 
@@ -112,21 +112,7 @@ class VkClient:
         self._titles[peer_id] = (time.monotonic(), title)
         return title
 
-    def privacy_value(self, key: str) -> dict:
-        for setting in self._api.account.getPrivacySettings()["settings"]:
-            if setting["key"] == key:
-                return setting.get("value") or {}
-        return {}
-
-    def set_privacy_allowed(self, key: str, owners: list[int]) -> None:
-        self._api.account.setPrivacy(key=key, value=",".join(map(str, owners)) if owners else "only_me")
-
     def upload_voice(self, path: str, peer_id: int) -> str:
         doc = self._upload.audio_message(path, peer_id=peer_id)["audio_message"]
         return attachment_id("audio_message", doc)
 
-    def upload_photo(self, path: str, peer_id: int) -> str:
-        return attachment_id("photo", self._upload.photo_messages(path, peer_id=peer_id)[0])
-
-    def upload_graffiti(self, path: str, peer_id: int) -> str:
-        return attachment_id("graffiti", self._upload.graffiti(path, peer_id=peer_id)["graffiti"])

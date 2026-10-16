@@ -50,13 +50,6 @@ def test_commands_are_fetched_and_handled(store):
     assert vk.reads == 1 and vk.deleted
 
 
-def test_banned_author_is_not_fetched(store):
-    store.add_to("banned", STRANGER)
-    vk = CountingVk("/help")
-    dispatcher(vk, store).dispatch(Incoming(100, CHAT, "/help", STRANGER))
-    assert vk.reads == 0
-
-
 def test_own_messages_are_never_dispatched(store):
     vk = CountingVk("/trust 9", author=OWNER)
     vk.own_random_ids.add(777)

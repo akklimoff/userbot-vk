@@ -3,7 +3,7 @@ import os
 import tempfile
 
 from userbot import media
-from userbot.attachments import circle_id, is_circle_id, source_attachment, voice_url
+from userbot.attachments import circle_id, is_circle_id, voice_url
 from userbot.context import ERROR, INVALID, SUCCESS, Access, Command, Context
 
 SAVED = "saved_audio"
@@ -53,18 +53,6 @@ def distort(ctx: Context) -> None:
     with media.heavy_slot(), tempfile.TemporaryDirectory() as tmp:
         result = os.path.join(tmp, "result.ogg")
         media.apply_voice_effect(media.download(url, tmp, ".ogg"), result, args[1])
-        voice = ctx.vk.upload_voice(result, ctx.peer_id)
-    ctx.result(attachment=voice)
-
-
-def song(ctx: Context) -> None:
-    attachment = source_attachment(ctx.message)
-    audio = attachment.get("audio") if attachment else None
-    if not audio or not audio.get("url"):
-        ctx.fail(f"{ERROR} Нужна аудиозапись — прикрепите её или ответьте на неё")
-    with media.heavy_slot(), tempfile.TemporaryDirectory() as tmp:
-        result = os.path.join(tmp, "result.wav")
-        media.song_to_voice(media.download(audio["url"], tmp, ".mp3"), result)
         voice = ctx.vk.upload_voice(result, ctx.peer_id)
     ctx.result(attachment=voice)
 
@@ -140,7 +128,6 @@ def list_saved(ctx: Context) -> None:
 
 COMMANDS = [
     Command(("/жгс", "/жмыхгс", "/au", "/audio"), distort, "жмых голосового (ответом)", icon="🎤", usage="[1-4]"),
-    Command(("/пгс", "/песня", "/ma", "/music_audio"), song, "превратить песню в голосовое", icon="🎶"),
     Command(("/кгс", "/копия", "/copy"), copy, "скопировать чужое голосовое или кружочек (ответом)",
             Access.TRUSTED, "🎙"),
     Command(("/сгс", "/сохр", "/sa", "/save_audio"), save,

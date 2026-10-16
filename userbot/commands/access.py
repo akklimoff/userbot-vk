@@ -1,45 +1,14 @@
 from userbot.context import (INVALID, SUCCESS, SUCCESS_NO, TRUSTED_USERS, Access, Command, Context,
                              full_name)
 
-BANNED = "banned"
-BANNED_PEERS = "banned_peers"
 IGNORED = "ignore"
 DISABLED = "disabled"
 
 
-# иначе доверенный обходил бы правило «доверием управляет только владелец», блокируя других доверенных
+# иначе доверенный обходил бы правило «доверием управляет только владелец», игнорируя других доверенных
 def protect_trusted(ctx: Context, user: dict) -> None:
     if not ctx.is_owner and user["id"] in ctx.store.get(TRUSTED_USERS, []):
         ctx.fail(f"{INVALID} {full_name(user)} — доверенный, тут решает только владелец")
-
-
-def ban(ctx: Context) -> None:
-    user = ctx.target("/ban @ник")
-    if user["id"] == ctx.owner_id:
-        ctx.fail(f"{INVALID} Себя заблокировать нельзя")
-    protect_trusted(ctx, user)
-    if not ctx.store.add_to(BANNED, user["id"]):
-        ctx.fail(f"{INVALID} {full_name(user)} уже заблокирован")
-    ctx.done(f"{SUCCESS} {full_name(user)} заблокирован — бот больше не отвечает ему")
-
-
-def unban(ctx: Context) -> None:
-    user = ctx.target("/unban @ник")
-    if not ctx.store.remove_from(BANNED, user["id"]):
-        ctx.fail(f"{INVALID} {full_name(user)} и так не заблокирован")
-    ctx.done(f"{SUCCESS} {full_name(user)} разблокирован")
-
-
-def ban_chat(ctx: Context) -> None:
-    if not ctx.store.add_to(BANNED_PEERS, ctx.peer_id):
-        ctx.fail(f"{INVALID} Беседа уже заблокирована")
-    ctx.done(f"{SUCCESS} Беседа заблокирована — здесь бот слушает только владельца и доверенных")
-
-
-def unban_chat(ctx: Context) -> None:
-    if not ctx.store.remove_from(BANNED_PEERS, ctx.peer_id):
-        ctx.fail(f"{INVALID} Беседа и так не заблокирована")
-    ctx.done(f"{SUCCESS} Беседа разблокирована")
 
 
 def ignore(ctx: Context) -> None:
@@ -92,11 +61,6 @@ def list_trusted(ctx: Context) -> None:
 
 
 COMMANDS = [
-    Command(("/блок", "/ban"), ban, "бот перестанет отвечать человеку", Access.TRUSTED, "🚫", "[кто]"),
-    Command(("/разблок", "/unban"), unban, "снять блокировку", Access.TRUSTED, "🌸", "[кто]"),
-    Command(("/блокчат", "/ban_chat"), ban_chat, "в этой беседе бот слушает только владельца и доверенных",
-            Access.TRUSTED, "🔒"),
-    Command(("/разблокчат", "/unban_chat"), unban_chat, "вернуть бота в беседу для всех", Access.TRUSTED, "🔓"),
     Command(("/игнор", "/ignore"), ignore, "сообщения человека будут исчезать у владельца",
             Access.TRUSTED, "🙈", "[кто]"),
     Command(("/разигнор", "/unignore"), unignore, "убрать из игнора", Access.TRUSTED, "🙉", "[кто]"),

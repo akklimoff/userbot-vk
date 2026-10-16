@@ -2,8 +2,7 @@ import logging
 import time
 from collections.abc import Callable, Collection, Sequence
 
-from userbot.commands.access import BANNED, BANNED_PEERS, DISABLED, IGNORED
-from userbot.commands.assoc import ASSOC
+from userbot.commands.access import DISABLED, IGNORED
 from userbot.context import ERROR, PROCESS, TRUSTED_USERS, Abort, Command, Context
 from userbot.media import MediaBusy, MediaError
 from userbot.store import Store
@@ -53,10 +52,9 @@ class Router:
     def wants(self, text: str, author: int | None, peer_id: int) -> bool:
         if author in self._store.get(IGNORED, []):
             return True
-        if self.from_other_account(author) or author in self._store.get(BANNED, []):
+        if self.from_other_account(author):
             return False
-        if not self.privileged(author) and (peer_id in self._store.get(BANNED_PEERS, [])
-                                            or self._store.get(DISABLED, False)):
+        if not self.privileged(author) and self._store.get(DISABLED, False):
             return False
         words = text.split()
         return bool(words) and self.command_for(words[0].lower()) is not None
@@ -66,7 +64,7 @@ class Router:
         return author != self._owner_id and author in self._own_accounts
 
     def command_for(self, word: str) -> Command | None:
-        return self._by_name.get(self._store.get(ASSOC, {}).get(word, word))
+        return self._by_name.get(word)
 
     def _accepts(self, message: dict) -> bool:
         author = message["from_id"]
@@ -76,9 +74,7 @@ class Router:
         if author in self._store.get(IGNORED, []):
             self._vk.delete([message["id"]], False)
             return False
-        if self.from_other_account(author) or author in self._store.get(BANNED, []):
-            return False
-        if not privileged and message["peer_id"] in self._store.get(BANNED_PEERS, []):
+        if self.from_other_account(author):
             return False
         if not privileged and self._store.get(DISABLED, False):
             return False

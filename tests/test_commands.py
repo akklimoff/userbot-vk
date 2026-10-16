@@ -1,29 +1,13 @@
 import pytest
 
-from tests.fakes import CHAT, OWNER, STRANGER, FakeVk, in_peer, message, texts, user
+from tests.fakes import CHAT, OWNER, STRANGER, FakeVk, in_peer, message
 from userbot.commands import COMMANDS
-from userbot.commands.images import dist_percent
 from userbot.commands.info import help_text
 from userbot.commands.messages import parse_ttl
 from userbot.context import Access
 from userbot.context import user_ref
 from userbot.router import Router
-from userbot.safety import BARE_WORDS, COMMAND_WORDS, DELETE_WORD, looks_like_command
-
-
-def test_ban_and_unban_round_trip(router, vk, store):
-    router.handle(message("/ban [id2|Имя]"))
-    assert store.get("banned") == [STRANGER]
-    router.handle(message("/ban 2"))
-    assert "уже заблокирован" in texts(vk)[-1]
-    router.handle(message("/unban 2"))
-    assert store.get("banned") == []
-
-
-def test_owner_cannot_ban_self(router, vk, store):
-    router.handle(message("/ban 1"))
-    assert store.get("banned") is None
-    assert vk.deleted == [([100], True)]
+from userbot.safety import BARE_WORDS, COMMAND_WORDS, DELETE_WORD
 
 
 def test_target_from_reply(router, store):
@@ -31,28 +15,11 @@ def test_target_from_reply(router, store):
     assert store.get("ignore") == [STRANGER]
 
 
-def test_ban_chat_toggles_current_peer(router, store):
-    router.handle(message("/ban_chat"))
-    router.handle(message("/unban_chat"))
-    assert store.get("banned_peers") == []
-
-
-def test_assoc_set_requires_existing_command(router, vk, store):
-    router.handle(message("/assoc_set /nope x"))
-    assert store.get("assoc") is None
-    router.handle(message("/assoc_set /uid /d"))
-    assert store.get("assoc") is None
-    router.handle(message("/assoc_set /UID айди"))
-    assert store.get("assoc") == {"айди": "/uid"}
-    router.handle(message("/assoc_del айди"))
-    assert store.get("assoc") == {}
-
-
 def test_help_depends_on_access():
     public = help_text(COMMANDS, Access.PUBLIC)
     trusted = help_text(COMMANDS, Access.TRUSTED)
     full = help_text(COMMANDS, Access.OWNER)
-    assert "/ban" not in public and "/ban" in trusted
+    assert "/ignore" not in public and "/ignore" in trusted
     assert "/trust" not in public and trusted == full
     assert "[id" not in full and "http" not in full
     assert not any(name in full for name in ("/tc", "/st,", "/groups"))
@@ -63,13 +30,7 @@ def test_command_names_are_unique():
     assert len(names) == len(set(names))
 
 
-@pytest.mark.parametrize("name", [name for c in COMMANDS for name in c.names if not name.startswith("/")])
-def test_prefixless_names_are_not_vk_bot_commands(name):
-    assert not looks_like_command(f"{name} текст")
-
-
-# /ban был до этой проверки: у vk-bot «/ban» — тоже бан, поведение совпадает
-@pytest.mark.parametrize("name", [name for c in COMMANDS for name in c.names if name != "/ban"])
+@pytest.mark.parametrize("name", [name for c in COMMANDS for name in c.names])
 def test_names_are_not_vk_bot_command_words(name):
     assert name.lstrip("!/-+").rstrip(",.:!") not in COMMAND_WORDS | BARE_WORDS | {DELETE_WORD}
 
@@ -155,21 +116,6 @@ def test_del_removes_only_own_recent_messages(vk, store):
     assert vk.deleted[-1] == ([99, 97], True)
 
 
-def test_privacy_open_requires_friend(store):
-    vk = FakeVk(users={STRANGER: user(STRANGER, is_friend=0)})
-    Router(vk, store, COMMANDS, OWNER, sleep=lambda _: None).handle(
-        message("+a", reply_message={"id": 5, "from_id": STRANGER}))
-    assert vk.privacy == {}
-
-
-def test_privacy_open_and_close(router, vk):
-    reply = {"id": 5, "from_id": STRANGER}
-    router.handle(message("+s", reply_message=reply))
-    assert vk.privacy["photos_saved"] == [STRANGER]
-    router.handle(message("-сохры", reply_message=reply))
-    assert vk.privacy["photos_saved"] == []
-
-
 def test_saved_voice_flow(router, vk, store, monkeypatch, tmp_path):
     from userbot import media
     monkeypatch.setattr(media, "download", lambda url, d, s: str(tmp_path / "v.ogg"))
@@ -182,7 +128,6 @@ def test_saved_voice_flow(router, vk, store, monkeypatch, tmp_path):
     assert store.get("saved_audio") == {}
 
 
-
 def test_saved_voice_without_name_gets_next_number(router, store, monkeypatch, tmp_path):
     from userbot import media
     monkeypatch.setattr(media, "download", lambda url, d, s: str(tmp_path / "v.ogg"))
@@ -190,17 +135,6 @@ def test_saved_voice_without_name_gets_next_number(router, store, monkeypatch, t
     voice = {"type": "audio_message", "audio_message": {"link_ogg": "https://x/v.ogg"}}
     router.handle(message("/sa", reply_message={"id": 5, "from_id": STRANGER, "attachments": [voice]}))
     assert list(store.get("saved_audio")) == ["1", "2"]
-
-def test_caption_needs_text(router, vk):
-    photo = {"type": "photo", "photo": {"sizes": [{"url": "https://x/a.jpg", "width": 1, "height": 1}]}}
-    router.handle(message("/t", from_id=STRANGER, peer_id=STRANGER, attachments=[photo]))
-    assert "Нужны фото и текст" in in_peer(vk, STRANGER)[0]["text"]
-
-
-@pytest.mark.parametrize("args, percent", [(["/d"], 50), (["/d", "1"], 50), (["/d", "10"], 5), (["/d", "11"], None),
-                                           (["/d", "x"], None), (["/d", "0"], None)])
-def test_dist_percent(args, percent):
-    assert dist_percent(args) == percent
 
 
 @pytest.mark.parametrize("text, ref", [("https://vk.com/durov", "durov"), ("[id5|Имя]", "5"), ("@nick", "nick"),
@@ -218,22 +152,9 @@ def test_invisible_skips_link_attachments(router, vk):
 
 
 def test_invisible_keeps_message_when_text_is_command_like(router, vk):
-    router.handle(message("/i 5m +s"))
+    router.handle(message("/i 5m /гсы"))
     assert in_peer(vk, CHAT) == []
     assert "принял бы за команду" in in_peer(vk, OWNER)[0]["text"]
-
-
-def test_own_aliases_are_never_posted(router, vk, store):
-    store.put_new("assoc", "ау", "/uid")
-    router.handle(message("/repeat 2 ау как дела"))
-    assert in_peer(vk, CHAT) == []
-
-
-def test_privacy_keeps_complex_settings(router, vk):
-    vk.privacy_values["photos_saved"] = {"category": "friends", "owners": {"excluded": [7]}}
-    router.handle(message("+s", reply_message={"id": 5, "from_id": STRANGER}))
-    assert "photos_saved" not in vk.privacy
-    assert "настроен сложнее" in in_peer(vk, OWNER)[0]["text"]
 
 
 def test_busy_media_slots_are_reported(router, vk, monkeypatch):
@@ -246,6 +167,7 @@ def test_busy_media_slots_are_reported(router, vk, monkeypatch):
         yield
 
     monkeypatch.setattr(media, "heavy_slot", busy)
-    photo = {"type": "photo", "photo": {"sizes": [{"url": "https://x/a.jpg", "width": 1, "height": 1}]}}
-    router.handle(message("/d", from_id=STRANGER, peer_id=STRANGER, attachments=[photo]))
+    voice = {"type": "audio_message", "audio_message": {"link_ogg": "https://x/v.ogg"}}
+    router.handle(message("/au 1", from_id=STRANGER, peer_id=STRANGER, reply_message={"id": 5, "from_id": 9,
+                                                                                    "attachments": [voice]}))
     assert "занят" in in_peer(vk, STRANGER)[0]["text"]
