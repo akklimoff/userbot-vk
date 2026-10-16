@@ -14,7 +14,6 @@ log = logging.getLogger("userbot-vk")
 
 ERROR = "💔"
 INVALID = "🙅‍♀️"
-PROCESS = "💅"
 SUCCESS = "✨"
 SUCCESS_NO = "🥀"
 # пустой символ: VK не даёт отредактировать сообщение в пустую строку

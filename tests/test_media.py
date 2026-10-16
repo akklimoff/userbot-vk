@@ -11,8 +11,3 @@ from userbot import media
 ])
 def test_local_name_is_safe(url, name):
     assert media.local_name(url, ".png") == name
-
-
-def test_tool_failure_becomes_media_error():
-    with pytest.raises(media.MediaError):
-        media.run_tool(["definitely-missing-binary-for-userbot"])

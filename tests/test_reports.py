@@ -92,12 +92,3 @@ def test_closed_dm_does_not_break_command(trusted, vk, store):
     vk.send = send
     trusted.handle(message("/ignore 9", from_id=TRUSTED))
     assert store.get("ignore") == [9] and vk.deleted == [([100], True)]
-
-
-def test_media_result_stays_in_chat_as_reply_to_source(router, vk, monkeypatch, tmp_path):
-    monkeypatch.setattr(media, "download", lambda url, d, s: str(tmp_path / "v.ogg"))
-    monkeypatch.setattr(media, "apply_voice_effect", lambda src, dst, effect: None)
-    voice = {"type": "audio_message", "audio_message": {"link_ogg": "https://x/v.ogg"}}
-    router.handle(message("/au 1", from_id=STRANGER, reply_message={"id": 5, "from_id": 9, "attachments": [voice]}))
-    assert in_peer(vk, CHAT) == [{"peer_id": CHAT, "text": None, "attachment": "audio_message1_10", "reply_to": 5}]
-    assert vk.deleted == [([100], True)]

@@ -53,8 +53,3 @@ def test_saved_list_marks_circles(router, vk, store):
     router.handle(message("/гсы"))
     text = in_peer(vk, OWNER)[0]["text"]
     assert "🎀 голос" in text and "📹 круг" in text
-
-
-def test_circle_cannot_be_distorted(router, vk):
-    router.handle(replying("/жгс 1", CIRCLE))
-    assert in_peer(vk, CHAT) == [] and vk.uploads == []

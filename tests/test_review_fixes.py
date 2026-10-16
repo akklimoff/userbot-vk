@@ -1,4 +1,3 @@
-import subprocess
 
 import pytest
 
@@ -97,19 +96,3 @@ def test_del_falls_back_to_single_deletes(store):
 def test_download_requires_https(tmp_path):
     with pytest.raises(media.MediaError):
         media.download("http://example.com/a.png", str(tmp_path), ".png")
-
-
-def test_tools_never_see_the_token(monkeypatch):
-    seen = {}
-
-    def fake_run(args, **kwargs):
-        seen.update(kwargs["env"])
-
-    monkeypatch.setenv("VK_TOKEN", "secret")
-    monkeypatch.setattr(subprocess, "run", fake_run)
-    media.run_tool(["ffmpeg"])
-    assert "VK_TOKEN" not in seen and "secret" not in seen.values()
-
-
-def test_ffmpeg_reads_only_local_files():
-    assert media.FFMPEG[media.FFMPEG.index("-protocol_whitelist") + 1] == "file"

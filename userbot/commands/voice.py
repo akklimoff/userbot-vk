@@ -1,5 +1,4 @@
 import logging
-import os
 import tempfile
 
 from userbot import media
@@ -7,12 +6,9 @@ from userbot.attachments import circle_id, is_circle_id, voice_url
 from userbot.context import ERROR, INVALID, SUCCESS, Access, Command, Context
 
 SAVED = "saved_audio"
-NEED_VOICE = f"{ERROR} Нужно ответить на голосовое"
 NEED_VOICE_OR_CIRCLE = f"{ERROR} Нужно ответить на голосовое или кружочек"
 
 log = logging.getLogger("userbot-vk")
-AUDIO_USAGE = (f"{INVALID} Так: /au 1…4 ответом на голосовое\n\n"
-               "🎤 1 — обычный жмых\n🔥 2 — сильный\n🍃 3 — слабый\n🤖 4 — робот")
 
 
 def reupload_voice(ctx: Context, url: str) -> str:
@@ -41,20 +37,6 @@ def copy(ctx: Context) -> None:
     ctx.delete()
     attachment, _ = copy_of_reply(ctx)
     ctx.post(attachment=attachment)
-
-
-def distort(ctx: Context) -> None:
-    url = voice_url(ctx.reply_message)
-    if url is None:
-        ctx.fail(NEED_VOICE)
-    args = ctx.args
-    if len(args) < 2 or args[1] not in media.VOICE_EFFECTS:
-        ctx.fail(AUDIO_USAGE)
-    with media.heavy_slot(), tempfile.TemporaryDirectory() as tmp:
-        result = os.path.join(tmp, "result.ogg")
-        media.apply_voice_effect(media.download(url, tmp, ".ogg"), result, args[1])
-        voice = ctx.vk.upload_voice(result, ctx.peer_id)
-    ctx.result(attachment=voice)
 
 
 def next_free_number(saved: dict) -> str:
@@ -127,7 +109,6 @@ def list_saved(ctx: Context) -> None:
 
 
 COMMANDS = [
-    Command(("/жгс", "/жмыхгс", "/au", "/audio"), distort, "жмых голосового (ответом)", icon="🎤", usage="[1-4]"),
     Command(("/кгс", "/копия", "/copy"), copy, "скопировать чужое голосовое или кружочек (ответом)",
             Access.TRUSTED, "🎙"),
     Command(("/сгс", "/сохр", "/sa", "/save_audio"), save,

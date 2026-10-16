@@ -3,8 +3,8 @@ import time
 from collections.abc import Callable, Collection, Sequence
 
 from userbot.commands.access import DISABLED, IGNORED
-from userbot.context import ERROR, PROCESS, TRUSTED_USERS, Abort, Command, Context
-from userbot.media import MediaBusy, MediaError
+from userbot.context import ERROR, TRUSTED_USERS, Abort, Command, Context
+from userbot.media import MediaError
 from userbot.store import Store
 
 log = logging.getLogger("userbot-vk")
@@ -35,8 +35,6 @@ class Router:
             command.run(ctx)
         except Abort:
             pass
-        except MediaBusy:
-            ctx.report(f"{PROCESS} Бот красит ноготочки и занят другими файлами — попробуйте через минутку")
         except MediaError as e:
             log.warning("Команда %s в %s: %s", command.names[0], message["peer_id"], e)
             ctx.report(f"{ERROR} Не удалось обработать файл — попробуйте другой")

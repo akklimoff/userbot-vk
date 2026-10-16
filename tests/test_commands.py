@@ -155,19 +155,3 @@ def test_invisible_keeps_message_when_text_is_command_like(router, vk):
     router.handle(message("/i 5m /гсы"))
     assert in_peer(vk, CHAT) == []
     assert "принял бы за команду" in in_peer(vk, OWNER)[0]["text"]
-
-
-def test_busy_media_slots_are_reported(router, vk, monkeypatch):
-    from contextlib import contextmanager
-    from userbot import media
-
-    @contextmanager
-    def busy():
-        raise media.MediaBusy()
-        yield
-
-    monkeypatch.setattr(media, "heavy_slot", busy)
-    voice = {"type": "audio_message", "audio_message": {"link_ogg": "https://x/v.ogg"}}
-    router.handle(message("/au 1", from_id=STRANGER, peer_id=STRANGER, reply_message={"id": 5, "from_id": 9,
-                                                                                    "attachments": [voice]}))
-    assert "занят" in in_peer(vk, STRANGER)[0]["text"]

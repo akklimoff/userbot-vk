@@ -39,9 +39,8 @@ def test_media_failure_is_reported(router, vk, monkeypatch):
 
     monkeypatch.setattr(media, "download", broken)
     voice = {"type": "audio_message", "audio_message": {"link_ogg": "https://x/v.ogg"}}
-    router.handle(message("/au 1", from_id=STRANGER, peer_id=STRANGER, reply_message={"id": 5, "from_id": 9,
-                                                                                    "attachments": [voice]}))
-    assert "Не удалось обработать файл" in vk.sent[0]["text"] and vk.sent[0]["peer_id"] == STRANGER
+    router.handle(message("/copy", reply_message={"id": 5, "from_id": STRANGER, "attachments": [voice]}))
+    assert "Не удалось обработать файл" in vk.sent[0]["text"] and vk.sent[0]["peer_id"] == OWNER
 
 
 def test_unexpected_error_is_reported(router, vk, monkeypatch):

@@ -23,8 +23,8 @@ def test_vk_api_only_in_vk_module():
     assert modules_importing("vk_api") == {"userbot/vk.py"}
 
 
-def test_processes_only_in_media_module():
-    assert modules_importing("subprocess") == {"userbot/media.py"}
+def test_no_external_processes():
+    assert modules_importing("subprocess") == set()
 
 
 def test_no_shell_calls():

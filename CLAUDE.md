@@ -5,11 +5,10 @@
 
 ## Архитектура
 
-- `userbot/vk.py` — единственный модуль, знающий про `vk_api`; `userbot/media.py` — единственный, запускающий
-  внешние программы (ffmpeg), только `subprocess.run` со списком аргументов и таймаутом. Оба правила
+- `userbot/vk.py` — единственный модуль, знающий про `vk_api`; внешних программ бот не запускает. Оба правила
   проверяет `tests/test_boundaries.py`; остальное тестируется без сети.
 - `main.py` — по аккаунту на каждый токен (`VK_TOKEN` + `VK_TOKENS`): свой поток с long poll и переподключением,
-  свои `VkClient`, `Store`, `Router` и `ThreadPoolExecutor`; общий между аккаунтами только `media.heavy_slot()`.
+  свои `VkClient`, `Store`, `Router` и `ThreadPoolExecutor`.
   Упавший поток аккаунта завершает процесс (`os._exit(1)`), чтобы Docker перезапустил контейнер.
   Команды других своих аккаунтов роутер пропускает (`Router.from_other_account`), иначе в общей беседе ответят все.
   Каждое событие — в `ThreadPoolExecutor`. Полное сообщение (`messages.getById`) читается, только если первое
@@ -29,10 +28,7 @@
   `ignore`, `disabled`, `saved_audio`; доверенные — `trusted`.
 
 Инварианты:
-- Текст пользователя никогда не попадает в командную строку.
-- Временные файлы команды — только в её собственном `tempfile.TemporaryDirectory()`; ffmpeg — только
-  внутри `media.heavy_slot()` (не больше `HEAVY_JOBS` одновременно, иначе публичные команды кладут контейнер по OOM).
-  ffmpeg получает `TOOL_ENV` без токена и читает только локальный файл (`-protocol_whitelist file`).
+- Временные файлы команды — только в её собственном `tempfile.TemporaryDirectory()`.
 - Чужие команды ограничены `RateLimit` и очередью `STRANGER_BACKLOG` в `main.Dispatcher`; владелец и доверенные
   идут без лимитов. HTTP-запросы vk_api — через `TimeoutSession`: без таймаута зависшее соединение держит общую
   блокировку vk_api.
@@ -58,7 +54,7 @@
 ## Команды
 
 - Тесты: `.venv/bin/pytest`
-- Локальный запуск: `.venv/bin/python -m userbot.main` (нужен `.env` с `VK_TOKEN`; для медиа-команд — ffmpeg)
+- Локальный запуск: `.venv/bin/python -m userbot.main` (нужен `.env` с `VK_TOKEN`)
 - Деплой: `docker compose up -d --build` (настройки живут в томе `state`)
 
 ## Mandatory project rules (keep in sync with AGENTS.md / CLAUDE.md)
