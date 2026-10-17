@@ -70,9 +70,22 @@ def test_friend_actions_are_paced(autopilot, vk, store, clock):
     autopilot.tick()
     assert len(vk.added) == automation.ACTIONS_PER_RUN
     assert clock.pauses == [automation.ACTION_PAUSE] * automation.ACTIONS_PER_RUN
-    clock.now = automation.FRIENDS_EVERY
+    clock.now = automation.TICK_SECONDS
     autopilot.tick()
     assert len(vk.added) == automation.ACTIONS_PER_RUN + 5
+
+
+def test_new_requests_wait_for_the_next_check(autopilot, vk, store, clock):
+    vk.incoming = [5]
+    store.toggle(AUTO_ACCEPT)
+    autopilot.tick()
+    vk.incoming = [6]
+    clock.now = automation.FRIENDS_EVERY - 1
+    autopilot.tick()
+    assert vk.added == [5]
+    clock.now = automation.FRIENDS_EVERY
+    autopilot.tick()
+    assert vk.added == [5, 6]
 
 
 def test_throttling_pauses_everything(autopilot, vk, store, clock):
