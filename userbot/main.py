@@ -10,6 +10,7 @@ from concurrent.futures import Executor, ThreadPoolExecutor
 from userbot.automation import Autopilot
 from userbot.commands import COMMANDS
 from userbot.config import Settings
+from userbot.context import TRUSTED_USERS
 from userbot.router import Router
 from userbot.store import Store
 from userbot.vk import CHAT_PEER_OFFSET, Incoming, VkClient
@@ -153,6 +154,12 @@ def state_path(state_dir: str, account_id: int, first: bool) -> str:
     return path
 
 
+def grant_trust(store: Store, user_ids: list[int], owner_id: int) -> None:
+    for user_id in user_ids:
+        if user_id != owner_id and store.add_to(TRUSTED_USERS, user_id):
+            log.info("id%s доверенный из TRUSTED_IDS", user_id)
+
+
 # остальные аккаунты держат процесс живым, и Docker не перезапустит упавший — перезапускаем контейнер целиком
 def serve(number: int, token: str, settings: Settings, accounts: dict[int, int]) -> None:
     try:
@@ -170,6 +177,7 @@ def serve_account(number: int, token: str, settings: Settings, accounts: dict[in
                   accounts[vk.me_id])
         return
     store = Store(state_path(settings.state_dir, vk.me_id, number == 1))
+    grant_trust(store, settings.trusted, vk.me_id)
     router = Router(vk, store, COMMANDS, vk.me_id, own_accounts=accounts)
     threading.Thread(target=Autopilot(vk, store).run_forever, name=f"autopilot-{number}", daemon=True).start()
     log.info("userbot-vk запущен, id=%s", vk.me_id)

@@ -7,7 +7,7 @@ from tests.fakes import CHAT, OWNER, STRANGER, FakeVk, message
 from userbot import main
 from userbot.commands import COMMANDS
 from userbot.config import Settings
-from userbot.main import Dispatcher, serve, serve_account, state_path
+from userbot.main import Dispatcher, grant_trust, serve, serve_account, state_path
 from userbot.router import Router
 from userbot.vk import Incoming
 
@@ -112,3 +112,26 @@ def test_connect_retries_until_token_works(monkeypatch):
     pauses = []
     assert main.connect(1, "a", sleep=pauses.append) == "client"
     assert len(attempts) == 3 and pauses == [main.CONNECT_RETRY_SECONDS] * 2
+
+
+def test_trusted_ids_are_parsed():
+    assert settings(VK_TOKEN="a", TRUSTED_IDS=" 5, 7,,").trusted == [5, 7]
+
+
+def test_trusted_ids_must_be_numbers():
+    with pytest.raises(ValidationError):
+        settings(VK_TOKEN="a", TRUSTED_IDS="5,durov")
+
+
+def test_trusted_ids_are_granted_without_owner_and_duplicates(store):
+    store.add_to("trusted", 5)
+    grant_trust(store, [5, OWNER, 7], OWNER)
+    assert store.get("trusted") == [5, 7]
+
+
+def test_account_starts_with_trusted_from_env(monkeypatch, tmp_path):
+    monkeypatch.setattr(main, "connect", lambda number, token: FakeVk())
+    monkeypatch.setattr(main, "Autopilot", lambda vk, store: type("Idle", (), {"run_forever": lambda self: None})())
+    monkeypatch.setattr(main, "listen_forever", lambda *args: None)
+    serve_account(1, "a", settings(VK_TOKEN="a", STATE_DIR=str(tmp_path), TRUSTED_IDS="5"), {})
+    assert json.loads((tmp_path / f"{OWNER}.json").read_text())["trusted"] == [5]
