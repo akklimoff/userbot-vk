@@ -21,6 +21,8 @@ REMEMBERED_SENT = 5000
 MESSAGES_API_VERSION = "5.131"
 MAX_FRIEND_REQUESTS = 1000
 FRIENDS_PAGE = 5000
+# узлы pu.vk.ru временами массово отвечают 504 HTML-страницей; новый upload_url обычно ведёт на другой узел
+UPLOAD_ATTEMPTS = 5
 # слишком много запросов, флуд-контроль, ограничение аккаунта
 THROTTLE_CODES = frozenset({6, 9, 29})
 
@@ -134,13 +136,21 @@ class VkClient:
         return title
 
     def upload_voice(self, path: str, peer_id: int) -> str:
-        doc = self._upload.audio_message(path, peer_id=peer_id)["audio_message"]
-        return attachment_id("audio_message", doc)
+        for attempt in range(1, UPLOAD_ATTEMPTS + 1):
+            try:
+                doc = self._upload.audio_message(path, peer_id=peer_id)["audio_message"]
+                return attachment_id("audio_message", doc)
+            except requests.RequestException:
+                if attempt == UPLOAD_ATTEMPTS:
+                    raise
 
+    # заявку от удалённой или заблокированной страницы VK принять не даёт ([177]), а каждая попытка съедает
+    # лимит действий с друзьями
     def friend_requests(self, outgoing: bool) -> list[int]:
         with throttle_aware():
-            return self._api.friends.getRequests(out=int(outgoing), need_viewed=1,
-                                                 count=MAX_FRIEND_REQUESTS)["items"]
+            items = self._api.friends.getRequests(out=int(outgoing), need_viewed=1, extended=1,
+                                                  count=MAX_FRIEND_REQUESTS)["items"]
+        return [item["user_id"] for item in items if not item.get("deactivated")]
 
     def add_friend(self, user_id: int) -> None:
         with throttle_aware():
