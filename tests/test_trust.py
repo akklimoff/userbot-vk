@@ -91,3 +91,13 @@ def test_owner_messages_in_trusted_dialog_are_deleted_for_all(store):
     trust(router)
     router.handle(message("/del 1", from_id=TRUSTED, peer_id=TRUSTED, message_id=200))
     assert vk.deleted[-1] == ([99], True)
+
+
+def test_pinned_trusted_cannot_be_untrusted_or_ignored_even_by_owner(store, vk):
+    store.add_to("trusted", TRUSTED)
+    router = Router(vk, store, COMMANDS, OWNER, sleep=lambda _: None, pinned=frozenset({TRUSTED}))
+    router.handle(message(f"/untrust {TRUSTED}"))
+    router.handle(message(f"/ignore {TRUSTED}"))
+    assert store.get("trusted") == [TRUSTED] and store.get("ignore") is None
+    assert [m["text"] for m in vk.sent] == ["🙅‍♀️ Имя3 Фамилия — доверенный всегда, убрать нельзя",
+                                            "🙅‍♀️ Имя3 Фамилия — доверенный всегда, игнорировать нельзя"]

@@ -12,13 +12,15 @@ log = logging.getLogger("userbot-vk")
 
 class Router:
     def __init__(self, vk, store: Store, commands: Sequence[Command], owner_id: int,
-                 sleep: Callable[[float], None] = time.sleep, own_accounts: Collection[int] = ()):
+                 sleep: Callable[[float], None] = time.sleep, own_accounts: Collection[int] = (),
+                 pinned: frozenset[int] = frozenset()):
         self._vk = vk
         self._store = store
         self._commands = commands
         self._owner_id = owner_id
         self._sleep = sleep
         self._own_accounts = own_accounts
+        self._pinned = pinned
         self._by_name = {name: c for c in commands for name in c.names}
 
     def handle(self, message: dict) -> None:
@@ -28,7 +30,7 @@ class Router:
         if command is None:
             return
         ctx = Context(self._vk, self._store, self._owner_id, message, self._commands, self._sleep,
-                      lambda word: self.command_for(word) is not None)
+                      lambda word: self.command_for(word) is not None, pinned=self._pinned)
         if ctx.access < command.access:
             return
         try:

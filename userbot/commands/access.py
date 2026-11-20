@@ -5,8 +5,11 @@ IGNORED = "ignore"
 DISABLED = "disabled"
 
 
-# иначе доверенный обходил бы правило «доверием управляет только владелец», игнорируя других доверенных
+# иначе доверенный обходил бы правило «доверием управляет только владелец», игнорируя других доверенных,
+# а владелец игнором отрезал бы команды тех, кто доверенный всегда
 def protect_trusted(ctx: Context, user: dict) -> None:
+    if user["id"] in ctx.pinned:
+        ctx.fail(f"{INVALID} {full_name(user)} — доверенный всегда, игнорировать нельзя")
     if not ctx.is_owner and user["id"] in ctx.store.get(TRUSTED_USERS, []):
         ctx.fail(f"{INVALID} {full_name(user)} — доверенный, тут решает только владелец")
 
@@ -46,6 +49,8 @@ def trust(ctx: Context) -> None:
 
 def untrust(ctx: Context) -> None:
     user = ctx.target("/untrust @ник")
+    if user["id"] in ctx.pinned:
+        ctx.fail(f"{INVALID} {full_name(user)} — доверенный всегда, убрать нельзя")
     if not ctx.store.remove_from(TRUSTED_USERS, user["id"]):
         ctx.fail(f"{INVALID} {full_name(user)} и так не доверенный")
     ctx.done(f"{SUCCESS_NO} {full_name(user)} больше не доверенный")

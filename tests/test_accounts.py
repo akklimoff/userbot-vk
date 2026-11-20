@@ -129,9 +129,19 @@ def test_trusted_ids_are_granted_without_owner_and_duplicates(store):
     assert store.get("trusted") == [5, 7]
 
 
+def test_trusted_ids_are_taken_off_the_ignore_list(store):
+    store.add_to("ignore", 7)
+    store.add_to("ignore", 9)
+    grant_trust(store, [7], OWNER)
+    assert store.get("trusted") == [7] and store.get("ignore") == [9]
+
+
 def test_account_starts_with_trusted_from_env(monkeypatch, tmp_path):
     monkeypatch.setattr(main, "connect", lambda number, token: FakeVk())
     monkeypatch.setattr(main, "Autopilot", lambda vk, store: type("Idle", (), {"run_forever": lambda self: None})())
     monkeypatch.setattr(main, "listen_forever", lambda *args: None)
-    serve_account(1, "a", settings(VK_TOKEN="a", STATE_DIR=str(tmp_path), TRUSTED_IDS="5"), {})
+    routers = []
+    monkeypatch.setattr(main, "Router", lambda *args, **kwargs: routers.append(kwargs) or Router(*args, **kwargs))
+    serve_account(1, "a", settings(VK_TOKEN="a", STATE_DIR=str(tmp_path), TRUSTED_IDS=f"5,{OWNER}"), {})
     assert json.loads((tmp_path / f"{OWNER}.json").read_text())["trusted"] == [5]
+    assert routers[0]["pinned"] == frozenset({5})

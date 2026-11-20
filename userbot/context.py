@@ -51,6 +51,7 @@ class Context:
     sleep: Callable[[float], None] = time.sleep
     triggers_command: Callable[[str], bool] = lambda _: False
     deleted: bool = False
+    pinned: frozenset[int] = frozenset()
 
     @property
     def args(self) -> list[str]:

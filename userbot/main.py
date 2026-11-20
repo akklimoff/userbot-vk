@@ -9,6 +9,7 @@ from concurrent.futures import Executor, ThreadPoolExecutor
 
 from userbot.automation import Autopilot
 from userbot.commands import COMMANDS
+from userbot.commands.access import IGNORED
 from userbot.config import Settings
 from userbot.context import TRUSTED_USERS
 from userbot.router import Router
@@ -156,8 +157,12 @@ def state_path(state_dir: str, account_id: int, first: bool) -> str:
 
 def grant_trust(store: Store, user_ids: list[int], owner_id: int) -> None:
     for user_id in user_ids:
-        if user_id != owner_id and store.add_to(TRUSTED_USERS, user_id):
+        if user_id == owner_id:
+            continue
+        if store.add_to(TRUSTED_USERS, user_id):
             log.info("id%s доверенный из TRUSTED_IDS", user_id)
+        if store.remove_from(IGNORED, user_id):
+            log.info("id%s из TRUSTED_IDS убран из игнора", user_id)
 
 
 # остальные аккаунты держат процесс живым, и Docker не перезапустит упавший — перезапускаем контейнер целиком
@@ -177,8 +182,9 @@ def serve_account(number: int, token: str, settings: Settings, accounts: dict[in
                   accounts[vk.me_id])
         return
     store = Store(state_path(settings.state_dir, vk.me_id, number == 1))
+    pinned = frozenset(settings.trusted) - {vk.me_id}
     grant_trust(store, settings.trusted, vk.me_id)
-    router = Router(vk, store, COMMANDS, vk.me_id, own_accounts=accounts)
+    router = Router(vk, store, COMMANDS, vk.me_id, own_accounts=accounts, pinned=pinned)
     threading.Thread(target=Autopilot(vk, store).run_forever, name=f"autopilot-{number}", daemon=True).start()
     log.info("userbot-vk запущен, id=%s", vk.me_id)
     with ThreadPoolExecutor(max_workers=settings.workers, thread_name_prefix=f"account-{number}") as pool:
