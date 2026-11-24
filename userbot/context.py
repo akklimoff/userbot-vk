@@ -7,6 +7,7 @@ from collections.abc import Callable, Mapping, Sequence
 from dataclasses import dataclass, field
 from enum import IntEnum
 
+from userbot.later import run_later
 from userbot.library import Library, Shelf
 from userbot.safety import looks_like_command
 from userbot.store import Store
@@ -20,6 +21,7 @@ SUCCESS_NO = "🥀"
 # пустой символ: VK не даёт отредактировать сообщение в пустую строку
 BLANK = "&#13;"
 TRUSTED_USERS = "trusted"
+REPORT_LIFETIME_SECONDS = 300
 
 
 class Access(IntEnum):
@@ -56,6 +58,7 @@ class Context:
     library: Library | None = None
     admins: frozenset[int] = frozenset()
     shelves: Mapping[int, Shelf] = field(default_factory=dict)
+    later: Callable[[float, Callable[[], None]], None] = run_later
 
     @property
     def args(self) -> list[str]:
@@ -102,25 +105,35 @@ class Context:
         return looks_like_command(shown) or bool(words) and self.triggers_command(words[0].lower())
 
     # бот пишет от лица владельца, и long poll вернёт ему же его сообщение как команду владельца
-    def post(self, text: str | None = None, peer_id: int | None = None, **params) -> bool:
+    def post(self, text: str | None = None, peer_id: int | None = None, **params) -> int | None:
         if self.is_command_like(text):
             log.warning("Сообщение в %s похоже на команду бота и не отправлено", peer_id or self.peer_id)
-            return False
-        self.vk.send(peer_id or self.peer_id, text, **params)
-        return True
+            return None
+        return self.vk.send(peer_id or self.peer_id, text, **params)
 
-    def result(self, **params) -> bool:
+    def result(self, **params) -> int | None:
         reply = self.reply_message
         return self.post(reply_to=reply["id"] if reply else None, **params)
 
     # в чатах после команды ничего не остаётся: отчёт уходит в личку автору, владельцу (from_id == owner_id) — в «Избранное»
+    # отчёт нужен, пока его читают: дальше он только копится в личке. expire_ttl тут не годится — в «Избранном» VK
+    # отвечает на него [100] can't use expire ttl
     def report(self, text: str) -> None:
         if not self.reaches_author:
             return
         try:
-            self.post(without_mentions(text), peer_id=self.from_id)
+            message_id = self.post(without_mentions(text), peer_id=self.from_id)
         except Exception:
             log.info("Не удалось написать в личку %s", self.from_id)
+            return
+        if message_id:
+            self.later(REPORT_LIFETIME_SECONDS, lambda: self.forget_report(message_id))
+
+    def forget_report(self, message_id: int) -> None:
+        try:
+            self.vk.delete([message_id], self.from_id != self.owner_id)
+        except Exception:
+            log.info("Не удалось удалить отчёт в личке %s", self.from_id)
 
     # личка от аккаунта владельца каждому, кто написал команду в беседе, — путь к капче и ограничениям VK за спам;
     # сообществу не пишем вовсе, чтобы не завести переписку двух ботов

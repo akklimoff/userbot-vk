@@ -4,6 +4,7 @@ from collections.abc import Callable, Collection, Mapping, Sequence
 
 from userbot.commands.access import DISABLED, IGNORED
 from userbot.context import ERROR, TRUSTED_USERS, Abort, Command, Context
+from userbot.later import run_later
 from userbot.library import Library, Shelf
 from userbot.media import MediaError
 from userbot.store import Store
@@ -15,7 +16,8 @@ class Router:
     def __init__(self, vk, store: Store, commands: Sequence[Command], owner_id: int,
                  sleep: Callable[[float], None] = time.sleep, own_accounts: Collection[int] = (),
                  pinned: frozenset[int] = frozenset(), library: Library | None = None,
-                 admins: frozenset[int] = frozenset(), shelves: Mapping[int, Shelf] | None = None):
+                 admins: frozenset[int] = frozenset(), shelves: Mapping[int, Shelf] | None = None,
+                 later: Callable[[float, Callable[[], None]], None] = run_later):
         self._vk = vk
         self._store = store
         self._commands = commands
@@ -25,6 +27,7 @@ class Router:
         self._pinned = pinned
         self._library = library
         self._admins = admins
+        self._later = later
         self._shelves = {} if shelves is None else shelves
         self._by_name = {name: c for c in commands for name in c.names}
 
@@ -36,7 +39,7 @@ class Router:
             return
         ctx = Context(self._vk, self._store, self._owner_id, message, self._commands, self._sleep,
                       lambda word: self.command_for(word) is not None, pinned=self._pinned, library=self._library,
-                      admins=self._admins, shelves=self._shelves)
+                      admins=self._admins, shelves=self._shelves, later=self._later)
         if ctx.access < command.access:
             return
         try:

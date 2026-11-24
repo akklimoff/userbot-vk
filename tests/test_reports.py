@@ -92,3 +92,48 @@ def test_closed_dm_does_not_break_command(trusted, vk, store):
     vk.send = send
     trusted.handle(message("/ignore 9", from_id=TRUSTED))
     assert store.get("ignore") == [9] and vk.deleted == [([100], True)]
+
+
+@pytest.fixture
+def scheduled(vk, store):
+    from userbot.commands import COMMANDS
+    from userbot.router import Router
+    calls = []
+    router = Router(vk, store, COMMANDS, vk.me_id, sleep=lambda _: None, later=lambda delay, action: calls.append((delay, action)))
+    store.add_to("trusted", TRUSTED)
+    return router, calls
+
+
+def test_report_in_saved_messages_is_deleted_after_five_minutes(scheduled, vk):
+    router, calls = scheduled
+    router.handle(message("/911"))
+    [(delay, forget)] = calls
+    assert delay == 300 and vk.deleted == [([100], True)]
+    forget()
+    assert vk.deleted[-1] == ([1], False)
+
+
+def test_report_to_trusted_author_is_deleted_for_both(scheduled, vk):
+    router, calls = scheduled
+    router.handle(message("/ignore", from_id=TRUSTED))
+    assert in_peer(vk, TRUSTED)
+    calls[0][1]()
+    assert vk.deleted[-1] == ([1], True)
+
+
+def test_command_result_is_not_scheduled_for_deletion(scheduled, vk, store):
+    router, calls = scheduled
+    store.put_new("saved_audio", "привет", "audio_message1_5")
+    router.handle(message("/гс привет"))
+    assert in_peer(vk, CHAT) and calls == []
+
+
+def test_failed_report_deletion_is_swallowed(scheduled, vk):
+    router, calls = scheduled
+    router.handle(message("/911"))
+
+    def refuse(message_ids, for_all):
+        raise RuntimeError("уже удалено")
+
+    vk.delete = refuse
+    calls[0][1]()
