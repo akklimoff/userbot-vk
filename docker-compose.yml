@@ -6,6 +6,7 @@ services:
     env_file: .env
     volumes:
       - state:/app/state
+      - ./saved:/app/saved
     tmpfs:
       - /tmp:size=200m,mode=1777
     read_only: true

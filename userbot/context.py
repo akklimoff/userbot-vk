@@ -3,10 +3,11 @@ import logging
 import re
 import time
 import unicodedata
-from collections.abc import Callable, Sequence
+from collections.abc import Callable, Mapping, Sequence
 from dataclasses import dataclass, field
 from enum import IntEnum
 
+from userbot.library import Library, Shelf
 from userbot.safety import looks_like_command
 from userbot.store import Store
 
@@ -52,6 +53,9 @@ class Context:
     triggers_command: Callable[[str], bool] = lambda _: False
     deleted: bool = False
     pinned: frozenset[int] = frozenset()
+    library: Library | None = None
+    admins: frozenset[int] = frozenset()
+    shelves: Mapping[int, Shelf] = field(default_factory=dict)
 
     @property
     def args(self) -> list[str]:
@@ -74,6 +78,10 @@ class Context:
         if self.is_owner:
             return Access.OWNER
         return Access.TRUSTED if self.from_id in self.store.get(TRUSTED_USERS, []) else Access.PUBLIC
+
+    @property
+    def is_admin(self) -> bool:
+        return self.from_id in self.admins
 
     @property
     def reply_message(self) -> dict | None:
@@ -110,7 +118,7 @@ class Context:
         if not self.reaches_author:
             return
         try:
-            self.post(text, peer_id=self.from_id)
+            self.post(without_mentions(text), peer_id=self.from_id)
         except Exception:
             log.info("Не удалось написать в личку %s", self.from_id)
 
@@ -192,6 +200,11 @@ def as_shown(text: str | None) -> str:
             break
         shown = decoded
     return "".join(ch for ch in shown if unicodedata.category(ch) != "Cf")
+
+
+# название из команды возвращается в отчёт как есть, а в нём может быть упоминание
+def without_mentions(text: str) -> str:
+    return re.sub(r"\[(?:id|club|public)\d+\|([^\]]*)\]", r"\1", text)
 
 
 # без разметки [id…|…]: отчёты уходят в личку, а тег владельца в его же «Избранном» будит других ботов аккаунта

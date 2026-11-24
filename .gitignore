@@ -7,3 +7,5 @@ state/
 .omc/
 data.json
 files/
+.article.env
+saved/

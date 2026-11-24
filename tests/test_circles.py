@@ -42,6 +42,20 @@ def test_circle_that_stopped_working_is_reported(router, vk, store):
     assert "не отправился" in in_peer(vk, OWNER)[0]["text"]
 
 
+def test_voice_that_stopped_working_is_reported(router, vk, store):
+    store.put_new("saved_audio", "привет", "audio_message9_7_k")
+
+    def refuse(peer_id, text=None, **params):
+        if params.get("attachment"):
+            raise RuntimeError("[10] Internal server error")
+        return sent(peer_id, text, **params)
+
+    sent, vk.send = vk.send, refuse
+    router.handle(message("/гс привет"))
+    assert in_peer(vk, CHAT) == []
+    assert "Голосовое «привет» не отправилось" in in_peer(vk, OWNER)[0]["text"]
+
+
 def test_copy_reposts_foreign_circle(router, vk):
     router.handle(replying("/кгс", CIRCLE))
     assert in_peer(vk, CHAT) == [{"peer_id": CHAT, "text": None, "attachment": CIRCLE_ID}] and vk.uploads == []

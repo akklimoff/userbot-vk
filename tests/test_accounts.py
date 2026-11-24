@@ -48,24 +48,10 @@ def test_failed_account_restarts_the_container(monkeypatch):
     assert exits == [1]
 
 
-def test_legacy_state_is_copied_to_first_account(tmp_path):
-    (tmp_path / "data.json").write_text(json.dumps({"banned": [5]}))
-    path = state_path(str(tmp_path), OWNER, first=True)
-    assert json.loads(open(path).read()) == {"banned": [5]}
-    assert (tmp_path / "data.json").exists()
-
-
-def test_legacy_state_is_not_given_to_other_accounts(tmp_path):
-    (tmp_path / "data.json").write_text("{}")
-    state_path(str(tmp_path), OTHER_ACCOUNT, first=False)
-    assert (tmp_path / "data.json").exists() and not (tmp_path / f"{OTHER_ACCOUNT}.json").exists()
-
-
-def test_legacy_state_never_overwrites_account_state(tmp_path):
-    (tmp_path / "data.json").write_text(json.dumps({"banned": [5]}))
-    (tmp_path / f"{OWNER}.json").write_text(json.dumps({"banned": [7]}))
-    state_path(str(tmp_path), OWNER, first=True)
-    assert json.loads((tmp_path / f"{OWNER}.json").read_text()) == {"banned": [7]}
+def test_legacy_state_is_not_inherited_by_any_account(tmp_path):
+    (tmp_path / "data.json").write_text(json.dumps({"saved_audio": {"1": "audio_message5_1_k"}}))
+    path = state_path(str(tmp_path), OWNER)
+    assert path == str(tmp_path / f"{OWNER}.json") and not (tmp_path / f"{OWNER}.json").exists()
 
 
 @pytest.fixture

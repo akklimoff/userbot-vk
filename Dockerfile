@@ -9,7 +9,7 @@ RUN pip install --no-cache-dir -r requirements.txt
 
 COPY userbot ./userbot
 
-RUN useradd --create-home --uid 1000 appuser && mkdir -p /app/state && chown appuser /app/state
+RUN useradd --create-home --uid 1000 appuser && mkdir -p /app/state /app/saved && chown appuser /app/state /app/saved
 USER appuser
 
 CMD ["python", "-m", "userbot.main"]

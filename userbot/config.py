@@ -10,6 +10,7 @@ class Settings(BaseSettings):
     vk_tokens: str = ""
     trusted_ids: str = ""
     state_dir: str = "state"
+    saved_dir: str = "saved"
     log_messages: bool = False
     workers: int = 8
 
