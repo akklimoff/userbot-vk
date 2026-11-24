@@ -160,3 +160,23 @@ def test_oversized_voice_gets_no_file(tmp_path, monkeypatch):
     source.write_bytes(b"OggS-big")
     Library(str(tmp_path / "lib")).keep("1", str(source))
     assert Library(str(tmp_path / "lib")).path("1") is None
+
+
+def test_admin_sends_unique_foreign_voice_by_name_alone(router, vk):
+    router.handle(by_admin("/гс привет мир"))
+    assert in_peer(vk, CHAT)[0]["attachment"] == "audio_message1_10"
+    assert open(vk.uploads[0][1], "rb").read() == b"OggS-30"
+
+
+def test_name_saved_by_several_accounts_needs_an_id(router, vk, shelves, tmp_path):
+    shelves[YANA].store.put_new("saved_audio", "привет мир", "audio_message31_2_k")
+    router.handle(by_admin("/гс привет мир"))
+    text = in_peer(vk, ADMIN)[0]["text"]
+    assert in_peer(vk, CHAT) == [] and str(LELYA) in text and str(YANA) in text
+    router.handle(by_admin(f"/гс {LELYA} привет мир"))
+    assert in_peer(vk, CHAT)[0]["attachment"] == "audio_message1_10"
+
+
+def test_trusted_user_cannot_send_foreign_voice_by_name(router, vk):
+    router.handle(message("/гс привет мир", from_id=STRANGER))
+    assert in_peer(vk, CHAT) == [] and vk.uploads == []

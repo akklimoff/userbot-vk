@@ -130,11 +130,7 @@ def account_by(ctx: Context, ref: str) -> int | None:
 
 
 # чужое голосовое — документ другого аккаунта, VK его не отправит: звук берётся из файла и загружается заново
-def foreign_saved(ctx: Context, key: str) -> tuple[str, str, str | None] | None:
-    ref, name = split_account(key)
-    account = account_by(ctx, ref) if name else None
-    if account is None:
-        return None
+def from_account(ctx: Context, account: int, name: str) -> tuple[str, str, str | None]:
     shelf = other_shelves(ctx)[account]
     attachment = shelf.store.get(SAVED, {}).get(name)
     if attachment is None:
@@ -145,6 +141,18 @@ def foreign_saved(ctx: Context, key: str) -> tuple[str, str, str | None] | None:
     if path is None:
         ctx.fail(f"{ERROR} У голосового «{name}» нет файла — его может отправить только сам аккаунт {account}")
     return name, attachment, path
+
+
+def foreign_saved(ctx: Context, key: str) -> tuple[str, str, str | None] | None:
+    holders = [account for account, shelf in other_shelves(ctx).items() if key in shelf.store.get(SAVED, {})]
+    if len(holders) > 1:
+        ctx.fail(f"{INVALID} «{key}» сохранено у нескольких аккаунтов: {', '.join(map(str, holders))} — "
+                 f"укажите чей: /гс id {key}")
+    if holders:
+        return from_account(ctx, holders[0], key)
+    ref, name = split_account(key)
+    account = account_by(ctx, ref) if name else None
+    return None if account is None else from_account(ctx, account, name)
 
 
 def send_saved(ctx: Context) -> None:
@@ -212,7 +220,7 @@ def list_saved(ctx: Context) -> None:
         ctx.fail(f"{INVALID} Сохранённых голосовых и кружочков пока нет")
     lines = ["📒 Сохранённые голосовые и кружочки", "", *(saved_lines(saved) or ["пока пусто"])]
     if accounts:
-        lines += ["", "👥 Другие аккаунты — список: /гсы id, отправить: /гс id название", "", *accounts]
+        lines += ["", "👥 Другие аккаунты — список: /гсы id, отправить: /гс название или /гс id название", "", *accounts]
     ctx.answer("\n".join(lines))
 
 
